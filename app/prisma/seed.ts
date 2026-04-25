@@ -1,12 +1,21 @@
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import bcrypt from 'bcryptjs'
 
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL ?? 'file:./dev.db',
-})
-const prisma = new PrismaClient({ adapter } as any)
+const databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db'
+
+function makeAdapter() {
+  if (databaseUrl.startsWith('file:')) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3')
+    return new PrismaBetterSqlite3({ url: databaseUrl })
+  }
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PrismaPg } = require('@prisma/adapter-pg')
+  return new PrismaPg({ connectionString: databaseUrl })
+}
+
+const prisma = new PrismaClient({ adapter: makeAdapter() } as any)
 
 const clients = [
   { name: 'Goldee Enterprises LLP', partner: 'Rajesh Kumar', llpStatus: 'REGISTERED', odiStatus: 'UIN_ALLOTTED', indianBankStatus: 'OPENED', indianBankName: 'HDFC', foreignBankStatus: 'DONE', companyStatus: 'INCORPORATED', fcgprStatus: 'FILED', shareCertStatus: 'SUBMITTED', form3Status: 'FILED', billingEntity: 'Goldee Enterprises', invoiceNo: '2025-26/3112', invoiceStatus: 'SENT', paymentStatus: 'PAID', furtherWork: 'NONE' },
