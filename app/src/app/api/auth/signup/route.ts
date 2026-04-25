@@ -18,6 +18,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 })
     }
 
+    const VALID_ROLES = ['VIEWER', 'MANAGER', 'ADMIN']
+    const assignedRole = VALID_ROLES.includes(role) ? role : 'VIEWER'
+
     // Check if user already exists
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -31,7 +34,7 @@ export async function POST(request: NextRequest) {
         name,
         email,
         password: hashedPassword,
-        role: role || 'VIEWER',
+        role: assignedRole,
       },
     })
 

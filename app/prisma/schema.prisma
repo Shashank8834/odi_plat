@@ -56,6 +56,7 @@ model Invoice {
   status      String    @default("NOT_SENT")
   paymentDate DateTime?
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   client Client @relation(fields: [clientId], references: [id])
 }

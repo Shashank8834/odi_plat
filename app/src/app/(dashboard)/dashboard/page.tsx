@@ -26,17 +26,26 @@ interface Client {
 
 export default function DashboardPage() {
   const [data, setData] = useState<PipelineData | null>(null)
-  const [stalledClients, setStalledClients] = useState<Client[]>([])
   const [unpaidClients, setUnpaidClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/analytics/pipeline').then((r) => r.json()),
-      fetch('/api/clients?limit=5&paymentStatus=TO_BE_PAID').then((r) => r.json()),
+      fetch('/api/analytics/pipeline').then((r) => {
+        if (!r.ok) throw new Error('Failed to load pipeline data')
+        return r.json()
+      }),
+      fetch('/api/clients?limit=5&paymentStatus=TO_BE_PAID').then((r) => {
+        if (!r.ok) throw new Error('Failed to load clients')
+        return r.json()
+      }),
     ]).then(([pipeline, unpaid]) => {
       setData(pipeline)
       setUnpaidClients(unpaid.clients || [])
+      setLoading(false)
+    }).catch((err) => {
+      setError(err.message || 'Failed to load dashboard data')
       setLoading(false)
     })
   }, [])
@@ -49,35 +58,19 @@ export default function DashboardPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
+      </div>
+    )
+  }
+
   const stats = [
-    {
-      label: 'Total Clients',
-      value: data?.total ?? 0,
-      icon: '👥',
-      color: '#22d3ee',
-      bg: 'rgba(34, 211, 238, 0.08)',
-    },
-    {
-      label: 'Active',
-      value: data?.active ?? 0,
-      icon: '✅',
-      color: '#10b981',
-      bg: 'rgba(16, 185, 129, 0.08)',
-    },
-    {
-      label: 'Cancelled',
-      value: data?.cancelled ?? 0,
-      icon: '❌',
-      color: '#ef4444',
-      bg: 'rgba(239, 68, 68, 0.08)',
-    },
-    {
-      label: 'Stalled (7d+)',
-      value: data?.stalled ?? 0,
-      icon: '⏸',
-      color: '#fbbf24',
-      bg: 'rgba(251, 191, 36, 0.08)',
-    },
+    { label: 'Total Clients', value: data?.total ?? 0, icon: '👥', color: '#22d3ee', bg: 'rgba(34, 211, 238, 0.08)' },
+    { label: 'Active', value: data?.active ?? 0, icon: '✅', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)' },
+    { label: 'Cancelled', value: data?.cancelled ?? 0, icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)' },
+    { label: 'Stalled (7d+)', value: data?.stalled ?? 0, icon: '⏸', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' },
   ]
 
   const llpBreakdown = (data?.llpStats || [])
@@ -190,7 +183,7 @@ export default function DashboardPage() {
         <div className="glass-card p-5 col-span-3">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#94a3b8' }}>
-              ⚠️ Pending Payments
+              Pending Payments
             </h2>
             <Link href="/clients?paymentStatus=TO_BE_PAID" className="btn-ghost text-xs">
               View all →
@@ -198,7 +191,7 @@ export default function DashboardPage() {
           </div>
           {unpaidClients.length === 0 ? (
             <p className="text-sm text-center py-4" style={{ color: '#64748b' }}>
-              No pending payments 🎉
+              No pending payments
             </p>
           ) : (
             <div className="flex flex-col gap-2">

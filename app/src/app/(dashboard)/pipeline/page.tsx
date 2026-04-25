@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import StatusPill from '@/components/StatusPill'
-import { STATUS_LABELS, STAGE_OPTIONS, STAGES } from '@/lib/constants'
+import { STATUS_LABELS } from '@/lib/constants'
 
 interface Client {
   id: string
@@ -20,13 +20,6 @@ interface Client {
   form3Status: string | null
   paymentStatus: string | null
   updatedAt: string
-}
-
-type GroupedStage = {
-  key: string
-  label: string
-  shortLabel: string
-  clients: Array<{ client: Client; status: string | null }>
 }
 
 const STAGE_ORDER = ['TO_START', 'NAME_YET_TO_BE_APPLIED', 'NAME_APPLIED', 'INCORPORATION_FILED', 'SHARE_ALLOTMENT', 'IN_PROCESS', 'ON_HOLD', 'CLIENT_HAS_ENTITY', 'REGISTERED', 'CANCELLED']
@@ -66,20 +59,27 @@ function timeAgo(dateStr: string) {
 export default function PipelinePage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
   const [dragClient, setDragClient] = useState<Client | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/clients?limit=200')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to load clients')
+        return r.json()
+      })
       .then((data) => {
         setClients(data.clients || [])
         setLoading(false)
       })
+      .catch((err) => {
+        setError(err.message || 'Failed to load pipeline')
+        setLoading(false)
+      })
   }, [])
 
-  // Group clients by llpStatus
   const columns = STAGE_ORDER.map((status) => ({
     status,
     label: STATUS_LABELS[status] || status,
@@ -90,6 +90,10 @@ export default function PipelinePage() {
   const handleDragOver = (e: React.DragEvent, status: string) => {
     e.preventDefault()
     setDragOver(status)
+  }
+  const handleDragEnd = () => {
+    setDragClient(null)
+    setDragOver(null)
   }
   const handleDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault()
@@ -116,6 +120,14 @@ export default function PipelinePage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-400 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
       </div>
     )
   }
@@ -208,6 +220,7 @@ export default function PipelinePage() {
                       e.stopPropagation()
                       handleDragStart(client)
                     }}
+                    onDragEnd={handleDragEnd}
                     onClick={(e) => {
                       if (dragClient) e.preventDefault()
                     }}

@@ -21,19 +21,13 @@ interface Client {
   odiStatus: string | null
   indianBankStatus: string | null
   indianBankName: string | null
+  foreignBankStatus: string | null
+  fcgprStatus: string | null
   companyStatus: string | null
   paymentStatus: string | null
   invoiceNo: string | null
   furtherWork: string | null
   updatedAt: string
-}
-
-const PAYMENT_COLOR: Record<string, string> = {
-  PAID: '#10b981',
-  PARTIALLY_PAID: '#fbbf24',
-  TO_BE_PAID: '#ef4444',
-  TO_BE_DISCUSSED: '#94a3b8',
-  INCORPORATION_PAID: '#22d3ee',
 }
 
 export default function ClientsPage() {
@@ -43,6 +37,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState('')
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [filters, setFilters] = useState({
     llpStatus: searchParams.get('llpStatus') || '',
@@ -52,6 +47,7 @@ export default function ClientsPage() {
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
+    setFetchError('')
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (filters.llpStatus) params.set('llpStatus', filters.llpStatus)
@@ -59,10 +55,15 @@ export default function ClientsPage() {
     if (filters.furtherWork) params.set('furtherWork', filters.furtherWork)
     params.set('limit', '100')
 
-    const res = await fetch(`/api/clients?${params}`)
-    const data = await res.json()
-    setClients(data.clients || [])
-    setTotal(data.total || 0)
+    try {
+      const res = await fetch(`/api/clients?${params}`)
+      if (!res.ok) { setFetchError('Failed to load clients'); setLoading(false); return }
+      const data = await res.json()
+      setClients(data.clients || [])
+      setTotal(data.total || 0)
+    } catch {
+      setFetchError('Network error — could not load clients')
+    }
     setLoading(false)
   }, [search, filters])
 
@@ -84,13 +85,14 @@ export default function ClientsPage() {
       c.paymentStatus ? STATUS_LABELS[c.paymentStatus] || c.paymentStatus : '',
       c.invoiceNo || '',
     ])
-    const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n')
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `odi-clients-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -182,6 +184,15 @@ export default function ClientsPage() {
         )}
       </div>
 
+      {fetchError && (
+        <div
+          className="mb-4 px-4 py-3 rounded-lg text-sm"
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+        >
+          {fetchError}
+        </div>
+      )}
+
       {/* Table */}
       <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -202,13 +213,13 @@ export default function ClientsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12">
+                  <td colSpan={11} className="text-center py-12">
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-cyan-400 border-t-transparent mx-auto" />
                   </td>
                 </tr>
               ) : clients.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12">
+                  <td colSpan={11} className="text-center py-12">
                     <p style={{ color: '#64748b' }}>No clients found</p>
                   </td>
                 </tr>
@@ -245,13 +256,13 @@ export default function ClientsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <StatusPill status={(client as any).foreignBankStatus} size="sm" />
+                      <StatusPill status={client.foreignBankStatus} size="sm" />
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={client.companyStatus} size="sm" />
                     </td>
                     <td className="px-4 py-3">
-                      <StatusPill status={(client as any).fcgprStatus} size="sm" />
+                      <StatusPill status={client.fcgprStatus} size="sm" />
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={client.paymentStatus} size="sm" />

@@ -106,34 +106,52 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [tab, setTab] = useState<'overview' | 'activity' | 'notes'>('overview')
   const [noteText, setNoteText] = useState('')
   const [noteLoading, setNoteLoading] = useState(false)
+  const [noteError, setNoteError] = useState('')
   const [editMode, setEditMode] = useState(false)
   const [form, setForm] = useState<Partial<Client>>({})
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const fetchClient = useCallback(async () => {
-    const res = await fetch(`/api/clients/${id}`)
-    if (!res.ok) { router.push('/clients'); return }
-    const data = await res.json()
-    setClient(data)
-    setForm(data)
-    setLoading(false)
+    try {
+      const res = await fetch(`/api/clients/${id}`)
+      if (!res.ok) { router.push('/clients'); return }
+      const data = await res.json()
+      setClient(data)
+      setForm(data)
+      setLoading(false)
+    } catch {
+      router.push('/clients')
+    }
   }, [id, router])
 
   useEffect(() => { fetchClient() }, [fetchClient])
 
   const handleSave = async () => {
     setSaving(true)
+    setSaveError('')
     const { invoices, statusLogs, clientNotes, ...payload } = form as any
-    await fetch(`/api/clients/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    await fetchClient()
-    setEditMode(false)
+    try {
+      const res = await fetch(`/api/clients/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setSaveError(data.error || 'Failed to save changes')
+        setSaving(false)
+        return
+      }
+      await fetchClient()
+      setEditMode(false)
+    } catch {
+      setSaveError('Network error — changes not saved')
+    }
     setSaving(false)
   }
 
@@ -151,19 +169,42 @@ export default function ClientDetailPage() {
   const handleAddNote = async () => {
     if (!noteText.trim()) return
     setNoteLoading(true)
-    await fetch(`/api/clients/${id}/notes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: noteText }),
-    })
-    setNoteText('')
-    await fetchClient()
+    setNoteError('')
+    try {
+      const res = await fetch(`/api/clients/${id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: noteText }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setNoteError(data.error || 'Failed to add note')
+        setNoteLoading(false)
+        return
+      }
+      setNoteText('')
+      await fetchClient()
+    } catch {
+      setNoteError('Network error — note not saved')
+    }
     setNoteLoading(false)
   }
 
   const handleDelete = async () => {
-    await fetch(`/api/clients/${id}`, { method: 'DELETE' })
-    router.push('/clients')
+    setDeleteError('')
+    try {
+      const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        setDeleteError(data.error || 'Failed to delete client')
+        setDeleteConfirm(false)
+        return
+      }
+      router.push('/clients')
+    } catch {
+      setDeleteError('Network error — client not deleted')
+      setDeleteConfirm(false)
+    }
   }
 
   if (loading || !client) {
@@ -221,9 +262,12 @@ export default function ClientDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {deleteError && (
+            <span className="text-xs" style={{ color: '#ef4444' }}>{deleteError}</span>
+          )}
           {editMode ? (
             <>
-              <button onClick={() => { setEditMode(false); setForm(client) }} className="btn-ghost">Cancel</button>
+              <button onClick={() => { setEditMode(false); setForm(client); setSaveError('') }} className="btn-ghost">Cancel</button>
               <button onClick={handleSave} disabled={saving} className="btn-primary">
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -254,6 +298,15 @@ export default function ClientDetailPage() {
           )}
         </div>
       </div>
+
+      {saveError && (
+        <div
+          className="mb-4 px-4 py-3 rounded-lg text-sm"
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+        >
+          {saveError}
+        </div>
+      )}
 
       {/* Pipeline Stepper */}
       <div className="glass-card p-5 mb-6">
@@ -524,6 +577,9 @@ export default function ClientDetailPage() {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddNote()
               }}
             />
+            {noteError && (
+              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{noteError}</p>
+            )}
             <div className="flex items-center justify-between mt-2">
               <span className="text-xs" style={{ color: '#64748b' }}>Ctrl+Enter to submit</span>
               <button onClick={handleAddNote} disabled={noteLoading || !noteText.trim()} className="btn-primary">

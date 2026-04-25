@@ -7,15 +7,20 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await params
+    const { id } = await params
 
-  const logs = await prisma.statusLog.findMany({
-    where: { clientId: id },
-    orderBy: { timestamp: 'desc' },
-  })
+    const logs = await prisma.statusLog.findMany({
+      where: { clientId: id },
+      orderBy: { timestamp: 'desc' },
+    })
 
-  return NextResponse.json(logs)
+    return NextResponse.json(logs)
+  } catch (error) {
+    console.error('GET /api/clients/[id]/logs error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

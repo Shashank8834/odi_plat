@@ -114,14 +114,24 @@ export default function AnalyticsPage() {
   const [pipeline, setPipeline] = useState<PipelineData | null>(null)
   const [revenue, setRevenue] = useState<RevenueData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/analytics/pipeline').then((r) => r.json()),
-      fetch('/api/analytics/revenue').then((r) => r.json()),
+      fetch('/api/analytics/pipeline').then((r) => {
+        if (!r.ok) throw new Error('Failed to load pipeline data')
+        return r.json()
+      }),
+      fetch('/api/analytics/revenue').then((r) => {
+        if (!r.ok) throw new Error('Failed to load revenue data')
+        return r.json()
+      }),
     ]).then(([p, r]) => {
       setPipeline(p)
       setRevenue(r)
+      setLoading(false)
+    }).catch((err) => {
+      setError(err.message || 'Failed to load analytics')
       setLoading(false)
     })
   }, [])
@@ -130,6 +140,14 @@ export default function AnalyticsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-400 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
       </div>
     )
   }
@@ -171,7 +189,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Total Clients', value: pipeline?.total ?? 0, sub: 'All records', color: '#22d3ee', bg: 'rgba(34,211,238,0.08)' },
-          { label: 'Active', value: pipeline?.active ?? 0, sub: 'Not cancelled', color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+          { label: 'Active', value: pipeline?.active ?? 0, sub: 'Not cancelled or on hold', color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
           { label: 'Stalled (7d+)', value: pipeline?.stalled ?? 0, sub: 'Needs attention', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)' },
           {
             label: 'Total Revenue',

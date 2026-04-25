@@ -3,6 +3,13 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+const CLIENT_EDITABLE_FIELDS = new Set([
+  'name', 'partner', 'billingEntity', 'invoiceNo', 'invoiceStatus',
+  'paymentStatus', 'furtherWork', 'notes',
+  'llpStatus', 'odiStatus', 'indianBankStatus', 'indianBankName',
+  'foreignBankStatus', 'companyStatus', 'fcgprStatus', 'shareCertStatus', 'form3Status',
+])
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -41,14 +48,19 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const existing = await prisma.client.findUnique({ where: { id } })
+    const existing = await prisma.client.findUnique({ where: { id, isDeleted: false } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // Create audit log for each changed field
+    // Only allow whitelisted fields
+    const safeData: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(body)) {
+      if (CLIENT_EDITABLE_FIELDS.has(key)) safeData[key] = value
+    }
+
     const changedBy = session.user.email ?? session.user.name ?? 'unknown'
     const logEntries = []
 
-    for (const [key, newValue] of Object.entries(body)) {
+    for (const [key, newValue] of Object.entries(safeData)) {
       const oldValue = (existing as any)[key]
       if (oldValue !== newValue) {
         logEntries.push({
@@ -62,7 +74,7 @@ export async function PATCH(
     }
 
     const [updated] = await prisma.$transaction([
-      prisma.client.update({ where: { id }, data: body }),
+      prisma.client.update({ where: { id }, data: safeData }),
       ...logEntries.map((entry) => prisma.statusLog.create({ data: entry })),
     ])
 
@@ -83,6 +95,9 @@ export async function DELETE(
     if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id } = await params
+
+    const existing = await prisma.client.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     await prisma.client.update({
       where: { id },

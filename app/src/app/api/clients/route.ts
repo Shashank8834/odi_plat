@@ -57,6 +57,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
+async function createClientWithSerial(data: any, retries = 5): Promise<any> {
+  const maxClient = await prisma.client.findFirst({
+    orderBy: { serialNo: 'desc' },
+    select: { serialNo: true },
+  })
+  const nextSerialNo = (maxClient?.serialNo ?? 0) + 1
+  try {
+    return await prisma.client.create({ data: { ...data, serialNo: nextSerialNo } })
+  } catch (e: any) {
+    if (e.code === 'P2002' && e.meta?.target?.includes('serialNo') && retries > 0) {
+      return createClientWithSerial(data, retries - 1)
+    }
+    throw e
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -68,22 +84,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, partner, ...rest } = body
+    const { name, partner, notes, ...rest } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Client name is required' }, { status: 400 })
     }
 
-    // Get next serial number
-    const maxClient = await prisma.client.findFirst({
-      orderBy: { serialNo: 'desc' },
-      select: { serialNo: true },
-    })
-    const nextSerialNo = (maxClient?.serialNo ?? 0) + 1
-
-    const client = await prisma.client.create({
-      data: { name, partner, serialNo: nextSerialNo, ...rest },
-    })
+    const client = await createClientWithSerial({ name, partner, ...rest })
 
     await prisma.statusLog.create({
       data: {
@@ -94,6 +101,17 @@ export async function POST(request: NextRequest) {
         changedBy: session.user.email ?? session.user.name ?? 'unknown',
       },
     })
+
+    // Save initial notes as a proper Note record so they appear in the Notes tab
+    if (notes && notes.trim()) {
+      await prisma.note.create({
+        data: {
+          clientId: client.id,
+          content: notes.trim(),
+          author: session.user.name ?? session.user.email ?? 'System',
+        },
+      })
+    }
 
     return NextResponse.json(client, { status: 201 })
   } catch (error) {

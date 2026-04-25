@@ -15,11 +15,20 @@ export async function PATCH(
     }
 
     const { id } = await params
-    const body = await request.json()
+    const { invoiceNo, amount, status, paymentDate } = await request.json()
+
+    const existing = await prisma.invoice.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const data: Record<string, unknown> = {}
+    if (invoiceNo !== undefined) data.invoiceNo = invoiceNo || null
+    if (amount !== undefined) data.amount = amount ? parseFloat(amount) : null
+    if (status !== undefined) data.status = status
+    if (paymentDate !== undefined) data.paymentDate = paymentDate ? new Date(paymentDate) : null
 
     const invoice = await prisma.invoice.update({
       where: { id },
-      data: body,
+      data,
     })
 
     return NextResponse.json(invoice)

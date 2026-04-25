@@ -50,6 +50,18 @@ const NAV_ITEMS = [
   },
 ]
 
+const ChevronLeftIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+)
+
+const ChevronRightIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M9 18l6-6-6-6" />
+  </svg>
+)
+
 export default function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
@@ -83,19 +95,18 @@ export default function Sidebar() {
           <span className="text-sm font-black text-gray-900">O</span>
         </div>
         {!collapsed && (
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-bold text-white leading-tight">ODI Platform</p>
             <p className="text-xs" style={{ color: '#94a3b8' }}>Client Tracker</p>
           </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto p-1 rounded hover:bg-white/5 transition-colors"
-          style={{ color: '#64748b', display: collapsed ? 'none' : 'flex' }}
+          className="p-1 rounded hover:bg-white/5 transition-colors flex-shrink-0"
+          style={{ color: '#64748b' }}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
+          {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
         </button>
       </div>
 
