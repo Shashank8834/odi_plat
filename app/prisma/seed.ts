@@ -20,9 +20,20 @@ const prisma = new PrismaClient({ adapter: makeAdapter() } as any)
 async function main() {
   console.log('Seeding ODI Platform — admin user only')
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@odifirm.com'
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@123'
+  const adminEmail = process.env.SEED_ADMIN_EMAIL
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD
   const adminName = process.env.SEED_ADMIN_NAME ?? 'Admin'
+
+  if (!adminEmail || !adminPassword) {
+    console.error(
+      'Refusing to seed: set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in .env first.'
+    )
+    process.exit(1)
+  }
+  if (adminPassword.length < 12) {
+    console.error('Refusing to seed: SEED_ADMIN_PASSWORD must be at least 12 characters.')
+    process.exit(1)
+  }
 
   const hashed = await bcrypt.hash(adminPassword, 12)
 
