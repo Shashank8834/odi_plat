@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────
+// LOCAL DEV: SQLite   |  PRODUCTION: PostgreSQL
+// Connection URL is configured in prisma.config.ts
+// ─────────────────────────────────────────────
+datasource db {
+  provider = "sqlite"
+}
+
+// ─────────────────────────────────────────────
+// MODELS
+// Note: SQLite doesn't support enums, so we use
+// String fields with validation in the app layer.
+// ─────────────────────────────────────────────
+
+model Client {
+  id                 String      @id @default(uuid())
+  serialNo           Int         @unique
+  name               String
+  partner            String?
+  llpStatus          String?
+  odiStatus          String?
+  indianBankStatus   String?
+  indianBankName     String?
+  foreignBankStatus  String?
+  companyStatus      String?
+  fcgprStatus        String?
+  shareCertStatus    String?
+  form3Status        String?
+  billingEntity      String?
+  invoiceStatus      String?
+  invoiceNo          String?
+  paymentStatus      String?
+  furtherWork        String?
+  notes              String?
+  isDeleted          Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  invoices   Invoice[]
+  statusLogs StatusLog[]
+  clientNotes Note[]
+}
+
+model Invoice {
+  id          String    @id @default(uuid())
+  clientId    String
+  invoiceNo   String?   @unique
+  amount      Float?
+  status      String    @default("NOT_SENT")
+  paymentDate DateTime?
+  createdAt   DateTime  @default(now())
+
+  client Client @relation(fields: [clientId], references: [id])
+}
+
+model StatusLog {
+  id        String   @id @default(uuid())
+  clientId  String
+  field     String
+  oldValue  String?
+  newValue  String?
+  changedBy String?
+  timestamp DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id])
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  clientId  String
+  content   String
+  author    String?
+  createdAt DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id])
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      String    @default("VIEWER")
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model StatusEnum {
+  id           String  @id @default(uuid())
+  stage        String
+  value        String
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+}

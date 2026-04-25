@@ -1,0 +1,9 @@
+# Only the app/ directory is tracked
+*.pdf
+*.pptx
+*.xlsx
+*.jpg
+*.jpg
+*.tmp
+*.~lock*
+prompt_text.txt
