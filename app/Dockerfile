@@ -6,7 +6,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
 COPY . .
