@@ -1,11 +1,16 @@
 # ─────────────────────────────────────────────
 # ODI Platform — Docker Compose (Production)
-# Copy .env.example to .env and fill in values
+# Set values in a .env file next to this file:
+#   DB_PASSWORD=<strong password>
+#   NEXTAUTH_SECRET=<openssl rand -hex 32>
+#   APP_URL=http://<server-ip>:3010
+#   APP_PORT=3010
 # ─────────────────────────────────────────────
 
 services:
   db:
     image: postgres:16-alpine
+    container_name: odi-db
     restart: always
     volumes:
       - pg_data:/var/lib/postgresql/data
@@ -23,33 +28,20 @@ services:
 
   app:
     build: .
+    image: odi-platform
+    container_name: odi-app
     restart: always
     environment:
       DATABASE_URL: postgresql://odi_user:${DB_PASSWORD:-changeme}@db:5432/odi_platform?schema=public
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-this-to-a-random-secret}
-      NEXTAUTH_URL: ${APP_URL:-http://localhost}
+      NEXTAUTH_URL: ${APP_URL:-http://localhost:3010}
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "3000:3000"
-    networks:
-      - odi-network
-
-  nginx:
-    image: nginx:alpine
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - app
+      - "${APP_PORT:-3010}:3000"
     networks:
       - odi-network
 
