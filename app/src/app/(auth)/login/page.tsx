@@ -137,13 +137,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Credentials hint */}
-          <div className="mt-6 pt-4 border-t" style={{ borderColor: 'rgba(34, 211, 238, 0.08)' }}>
-            <p className="text-xs text-center" style={{ color: '#64748b' }}>
-              Demo: admin@odifirm.com / Admin@123
-            </p>
-          </div>
         </div>
       </div>
     </div>
