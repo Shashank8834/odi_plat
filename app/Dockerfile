@@ -8,6 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
 COPY . .
 
 # Switch to PostgreSQL for production
