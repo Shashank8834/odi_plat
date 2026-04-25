@@ -1,18 +1,27 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
 function createPrismaClient() {
-  const adapter = new PrismaBetterSqlite3({
-    url: process.env.DATABASE_URL ?? 'file:./dev.db',
-  })
+  const databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db'
+
+  if (databaseUrl.startsWith('file:')) {
+    // SQLite — used in local development only
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3')
+    const adapter = new PrismaBetterSqlite3({ url: databaseUrl })
+    return new PrismaClient({
+      adapter,
+      log: ['error', 'warn'],
+    } as any)
+  }
+
+  // PostgreSQL — used in production
   return new PrismaClient({
-    adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  } as any)
+  })
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
