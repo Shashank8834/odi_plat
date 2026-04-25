@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import StatusPill from '@/components/StatusPill'
@@ -31,6 +31,14 @@ interface Client {
 }
 
 export default function ClientsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ClientsPageInner />
+    </Suspense>
+  )
+}
+
+function ClientsPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
