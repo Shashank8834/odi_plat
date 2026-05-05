@@ -80,8 +80,8 @@ export default function DashboardPage() {
     { label: 'Stalled (7d+)', value: data?.stalled ?? 0, icon: '⏸', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' },
   ]
 
-  const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED']
-  const llpBucketCounts: Record<LlpBucket, number> = { COMPLETED: 0, IN_PROCESS: 0, CANCELLED: 0 }
+  const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED', 'UNKNOWN']
+  const llpBucketCounts: Record<LlpBucket, number> = { COMPLETED: 0, IN_PROCESS: 0, CANCELLED: 0, UNKNOWN: 0 }
   for (const s of data?.llpStats || []) {
     const b = bucketLlpStatus(s.llpStatus)
     if (b) llpBucketCounts[b] += s._count
@@ -171,6 +171,8 @@ export default function DashboardPage() {
                           ? 'rgba(239, 68, 68, 0.5)'
                           : item.llpStatus === 'COMPLETED'
                           ? 'rgba(16, 185, 129, 0.5)'
+                          : item.llpStatus === 'UNKNOWN'
+                          ? 'rgba(168, 85, 247, 0.5)'
                           : 'rgba(251, 191, 36, 0.5)',
                       }}
                     />

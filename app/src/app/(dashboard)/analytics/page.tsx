@@ -46,6 +46,7 @@ const STATUS_CHART_COLORS: Record<string, string> = {
   COMPLETED: '#10b981',
   IN_PROCESS: '#fbbf24',
   CANCELLED: '#ef4444',
+  UNKNOWN: '#a855f7',
   UIN_ALLOTTED: '#10b981',
   NOT_REQUIRED: '#475569',
   OPENED: '#10b981',
@@ -145,8 +146,8 @@ export default function AnalyticsPage() {
     )
   }
 
-  const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED']
-  const llpCounts: Record<LlpBucket, number> = { COMPLETED: 0, IN_PROCESS: 0, CANCELLED: 0 }
+  const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED', 'UNKNOWN']
+  const llpCounts: Record<LlpBucket, number> = { COMPLETED: 0, IN_PROCESS: 0, CANCELLED: 0, UNKNOWN: 0 }
   for (const s of pipeline?.llpStats || []) {
     const b = bucketLlpStatus(s.llpStatus)
     if (b) llpCounts[b] += s._count

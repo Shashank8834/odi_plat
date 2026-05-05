@@ -13,6 +13,7 @@ import {
   PAYMENT_STATUS_OPTIONS,
   FURTHER_WORK_OPTIONS,
   BANK_OPTIONS,
+  bucketLlpStatus,
 } from '@/lib/constants'
 
 interface Note {
@@ -274,7 +275,7 @@ export default function ClientDetailPage() {
             </>
           ) : (
             <>
-              {client.llpStatus !== 'COMPLETED' && (
+              {client.llpStatus !== 'COMPLETED' && bucketLlpStatus(client.llpStatus) !== 'UNKNOWN' && (
                 <button
                   onClick={() => handleStageChange('llpStatus', 'COMPLETED')}
                   className="btn-secondary"
@@ -318,6 +319,49 @@ export default function ClientDetailPage() {
           style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
         >
           {saveError}
+        </div>
+      )}
+
+      {/* Unknown LLP status — needs reclassification */}
+      {bucketLlpStatus(client.llpStatus) === 'UNKNOWN' && !editMode && (
+        <div
+          className="mb-6 p-4 rounded-lg flex items-center justify-between gap-4 flex-wrap"
+          style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)' }}
+        >
+          <div>
+            <p className="text-sm font-medium" style={{ color: '#d8b4fe' }}>
+              LLP status needs review
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: '#94a3b8' }}>
+              Stored as "{client.llpStatus}" — pick a bucket to classify it.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleStageChange('llpStatus', 'COMPLETED')}
+              className="btn-secondary"
+              style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.3)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+              Completed
+            </button>
+            <button
+              onClick={() => handleStageChange('llpStatus', 'IN_PROCESS')}
+              className="btn-secondary"
+              style={{ color: '#fbbf24', borderColor: 'rgba(251,191,36,0.3)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              In Process
+            </button>
+            <button
+              onClick={() => handleStageChange('llpStatus', 'CANCELLED')}
+              className="btn-secondary"
+              style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              Cancelled
+            </button>
+          </div>
         </div>
       )}
 

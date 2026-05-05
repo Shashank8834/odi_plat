@@ -86,6 +86,7 @@ export const BANK_OPTIONS = ['HDFC', 'Kotak', 'ICICI', 'Axis', 'DBS', 'HSBC', 'R
 
 export const STATUS_LABELS: Record<string, string> = {
   COMPLETED: 'Completed',
+  UNKNOWN: 'Unknown',
   REGISTERED: 'Registered',
   IN_PROCESS: 'In Process',
   NAME_APPLIED: 'Name Applied',
@@ -129,6 +130,8 @@ export const STATUS_LABELS: Record<string, string> = {
 // ─────────────────────────────────────────────
 
 export const STATUS_COLORS: Record<string, string> = {
+  // Purple — Unknown / needs review
+  UNKNOWN: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
   // Green — Complete/Done
   COMPLETED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   REGISTERED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
@@ -178,7 +181,9 @@ export const STATUS_COLORS: Record<string, string> = {
 // the canonical enum values used by filters.
 // ─────────────────────────────────────────────
 
-export type LlpBucket = 'COMPLETED' | 'IN_PROCESS' | 'CANCELLED'
+export type LlpBucket = 'COMPLETED' | 'IN_PROCESS' | 'CANCELLED' | 'UNKNOWN'
+
+export const LLP_FILTER_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED', 'UNKNOWN']
 
 export function bucketLlpStatus(value: string | null | undefined): LlpBucket | null {
   if (!value) return null
@@ -186,22 +191,19 @@ export function bucketLlpStatus(value: string | null | undefined): LlpBucket | n
   if (s.includes('cancel')) return 'CANCELLED'
   if (
     s.includes('registered') ||
+    s.includes('completed') ||
     s.includes('complete') ||
     s.includes('done') ||
-    s.includes('allotted') ||
-    s.includes('opened') ||
     s.includes('incorporated') ||
     s.includes('submitted') ||
-    s.includes('filed') ||
-    s.includes('individual-odi') ||
-    s.includes('has llp') ||
-    s.includes('has company') ||
-    s.includes('has opc') ||
-    s.includes('has entity') ||
-    s.includes('has a company') ||
-    s.includes('all ready')
+    s.includes('filed')
   ) return 'COMPLETED'
-  return 'IN_PROCESS'
+  if (
+    s.includes('process') ||
+    s.includes('progress') ||
+    s.includes('ongoing')
+  ) return 'IN_PROCESS'
+  return 'UNKNOWN'
 }
 
 export type PaymentBucket = 'PAID' | 'PARTIALLY_PAID' | 'INCORPORATION_PAID' | 'TO_BE_DISCUSSED' | 'TO_BE_PAID'

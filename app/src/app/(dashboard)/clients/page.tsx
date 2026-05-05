@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import StatusPill from '@/components/StatusPill'
 import {
   STAGES,
-  LLP_STATUS_OPTIONS,
+  LLP_FILTER_BUCKETS,
   PAYMENT_STATUS_OPTIONS,
   FURTHER_WORK_OPTIONS,
   STATUS_LABELS,
@@ -160,7 +160,7 @@ function ClientsPageInner() {
           onChange={(e) => setFilters((f) => ({ ...f, llpStatus: e.target.value }))}
         >
           <option value="">All LLP Status</option>
-          {LLP_STATUS_OPTIONS.map((s) => (
+          {LLP_FILTER_BUCKETS.map((s) => (
             <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
           ))}
         </select>
