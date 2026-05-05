@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { signOut, useSession } from 'next-auth/react'
 
 const NAV_ITEMS = [
   {
@@ -24,16 +25,6 @@ const NAV_ITEMS = [
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    href: '/pipeline',
-    label: 'Pipeline',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18V5l12-2v13" />
-        <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
       </svg>
     ),
   },
@@ -64,6 +55,7 @@ const ChevronRightIcon = () => (
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const [collapsed, setCollapsed] = useState(false)
 
   return (
@@ -127,6 +119,34 @@ export default function Sidebar() {
           )
         })}
       </nav>
+
+      {/* User / Sign out */}
+      <div
+        className="p-3 border-t"
+        style={{ borderColor: 'rgba(34, 211, 238, 0.08)' }}
+      >
+        {!collapsed && session?.user && (
+          <div className="px-3 mb-2">
+            <p className="text-xs font-medium text-white truncate">{session.user.name || session.user.email}</p>
+            <p className="text-xs truncate" style={{ color: '#64748b' }}>{session.user.email}</p>
+          </div>
+        )}
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="sidebar-link w-full"
+          title={collapsed ? 'Sign out' : undefined}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+        >
+          <span className="flex-shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </span>
+          {!collapsed && <span>Sign out</span>}
+        </button>
+      </div>
     </aside>
   )
 }

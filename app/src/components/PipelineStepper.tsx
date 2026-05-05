@@ -35,9 +35,14 @@ export default function PipelineStepper({ stages, editable, onStatusChange }: Pi
       <div className="flex items-start gap-0 min-w-max py-2">
         {stages.map((stage, index) => {
           const status = stage.status
-          const isComplete = status && !['IN_PROCESS', 'TO_START', 'NOT_REQUIRED', 'NA', 'PENDING', 'TO_BE_FILED', 'BANK_SELECTED', 'NAME_APPLIED', 'EMAILED', 'TO_BE_CHECKED'].includes(status)
-          const isActive = status && ['IN_PROCESS', 'PENDING', 'TO_BE_FILED', 'BANK_SELECTED', 'NAME_APPLIED', 'INCORPORATION_FILED', 'EMAILED', 'TO_BE_CHECKED'].includes(status)
+          const lc = status ? status.toLowerCase() : ''
+          const isCancelled = !!status && lc.includes('cancel')
+          const isActive = !!status && (
+            lc.includes('process') || lc.includes('pending') || lc.includes('hold') ||
+            ['TO_BE_FILED', 'BANK_SELECTED', 'NAME_APPLIED', 'INCORPORATION_FILED', 'EMAILED', 'TO_BE_CHECKED'].includes(status!)
+          )
           const isSkipped = status === 'NOT_REQUIRED' || status === 'NA'
+          const isComplete = !!status && !isCancelled && !isActive && !isSkipped && !['TO_START'].includes(status!)
           const isEmpty = !status
 
           const options = STAGE_OPTIONS[stage.key] as readonly string[] | undefined
@@ -52,14 +57,18 @@ export default function PipelineStepper({ stages, editable, onStatusChange }: Pi
                   style={{
                     width: '32px',
                     height: '32px',
-                    background: isComplete
+                    background: isCancelled
+                      ? 'rgba(239, 68, 68, 0.2)'
+                      : isComplete
                       ? 'rgba(16, 185, 129, 0.2)'
                       : isActive
                       ? 'rgba(251, 191, 36, 0.2)'
                       : isSkipped
                       ? 'rgba(71, 85, 105, 0.2)'
                       : 'rgba(15, 34, 56, 0.8)',
-                    border: isComplete
+                    border: isCancelled
+                      ? '2px solid rgba(239, 68, 68, 0.6)'
+                      : isComplete
                       ? '2px solid rgba(16, 185, 129, 0.6)'
                       : isActive
                       ? '2px solid rgba(251, 191, 36, 0.6)'
@@ -70,6 +79,8 @@ export default function PipelineStepper({ stages, editable, onStatusChange }: Pi
                       ? '0 0 10px rgba(16, 185, 129, 0.2)'
                       : isActive
                       ? '0 0 10px rgba(251, 191, 36, 0.2)'
+                      : isCancelled
+                      ? '0 0 10px rgba(239, 68, 68, 0.2)'
                       : 'none',
                     opacity: updating === stage.key ? 0.6 : 1,
                   }}
@@ -81,6 +92,10 @@ export default function PipelineStepper({ stages, editable, onStatusChange }: Pi
                 >
                   {updating === stage.key ? (
                     <div className="animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" style={{ width: '12px', height: '12px' }} />
+                  ) : isCancelled ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                   ) : isComplete ? (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
@@ -101,7 +116,7 @@ export default function PipelineStepper({ stages, editable, onStatusChange }: Pi
                   <p
                     className="text-xs font-medium leading-tight"
                     style={{
-                      color: isComplete ? '#10b981' : isActive ? '#fbbf24' : isSkipped ? '#64748b' : '#94a3b8',
+                      color: isCancelled ? '#ef4444' : isComplete ? '#10b981' : isActive ? '#fbbf24' : isSkipped ? '#64748b' : '#94a3b8',
                       maxWidth: '80px',
                     }}
                   >

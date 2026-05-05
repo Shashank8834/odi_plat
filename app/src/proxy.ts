@@ -29,7 +29,6 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/clients/:path*',
-    '/pipeline/:path*',
     '/analytics/:path*',
     '/api/clients/:path*',
     '/api/analytics/:path*',

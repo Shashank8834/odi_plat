@@ -14,7 +14,7 @@ import {
   Cell,
   Legend,
 } from 'recharts'
-import { STATUS_LABELS } from '@/lib/constants'
+import { STATUS_LABELS, bucketLlpStatus, bucketPaymentStatus, type LlpBucket, type PaymentBucket } from '@/lib/constants'
 
 interface PipelineData {
   total: number
@@ -43,16 +43,9 @@ interface RevenueData {
 }
 
 const STATUS_CHART_COLORS: Record<string, string> = {
-  REGISTERED: '#10b981',
+  COMPLETED: '#10b981',
   IN_PROCESS: '#fbbf24',
-  NAME_APPLIED: '#22d3ee',
-  CLIENT_HAS_ENTITY: '#06b6d4',
-  INCORPORATION_FILED: '#f59e0b',
-  SHARE_ALLOTMENT: '#f97316',
-  NAME_YET_TO_BE_APPLIED: '#64748b',
-  ON_HOLD: '#94a3b8',
   CANCELLED: '#ef4444',
-  TO_START: '#334155',
   UIN_ALLOTTED: '#10b981',
   NOT_REQUIRED: '#475569',
   OPENED: '#10b981',
@@ -152,14 +145,28 @@ export default function AnalyticsPage() {
     )
   }
 
-  const llpChartData = (pipeline?.llpStats || [])
-    .filter((s) => s.llpStatus)
-    .map((s) => ({ name: s.llpStatus!, value: s._count, fill: STATUS_CHART_COLORS[s.llpStatus!] || '#64748b' }))
+  const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED']
+  const llpCounts: Record<LlpBucket, number> = { COMPLETED: 0, IN_PROCESS: 0, CANCELLED: 0 }
+  for (const s of pipeline?.llpStats || []) {
+    const b = bucketLlpStatus(s.llpStatus)
+    if (b) llpCounts[b] += s._count
+  }
+  const llpChartData = LLP_BUCKETS
+    .map((b) => ({ name: b as string, value: llpCounts[b], fill: STATUS_CHART_COLORS[b] || '#64748b' }))
+    .filter((x) => x.value > 0)
     .sort((a, b) => b.value - a.value)
 
-  const paymentChartData = (pipeline?.paymentStats || [])
-    .filter((s) => s.paymentStatus)
-    .map((s) => ({ name: s.paymentStatus!, value: s._count, fill: STATUS_CHART_COLORS[s.paymentStatus!] || '#64748b' }))
+  const PAYMENT_BUCKETS: PaymentBucket[] = ['PAID', 'PARTIALLY_PAID', 'INCORPORATION_PAID', 'TO_BE_DISCUSSED', 'TO_BE_PAID']
+  const paymentCounts: Record<PaymentBucket, number> = {
+    PAID: 0, PARTIALLY_PAID: 0, INCORPORATION_PAID: 0, TO_BE_DISCUSSED: 0, TO_BE_PAID: 0,
+  }
+  for (const s of pipeline?.paymentStats || []) {
+    const b = bucketPaymentStatus(s.paymentStatus)
+    if (b) paymentCounts[b] += s._count
+  }
+  const paymentChartData = PAYMENT_BUCKETS
+    .map((b) => ({ name: b as string, value: paymentCounts[b], fill: STATUS_CHART_COLORS[b] || '#64748b' }))
+    .filter((x) => x.value > 0)
 
   const odiChartData = (pipeline?.odiStats || [])
     .filter((s) => s.odiStatus)

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import StatusPill from '@/components/StatusPill'
-import { STATUS_LABELS } from '@/lib/constants'
+import { STATUS_LABELS, bucketLlpStatus, bucketPaymentStatus, type LlpBucket, type PaymentBucket } from '@/lib/constants'
 
 interface PipelineData {
   total: number
@@ -31,18 +31,25 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    const PENDING_BUCKETS: PaymentBucket[] = ['TO_BE_PAID', 'PARTIALLY_PAID', 'TO_BE_DISCUSSED']
     Promise.all([
       fetch('/api/analytics/pipeline').then((r) => {
         if (!r.ok) throw new Error('Failed to load pipeline data')
         return r.json()
       }),
-      fetch('/api/clients?limit=5&paymentStatus=TO_BE_PAID').then((r) => {
+      fetch('/api/clients?limit=500').then((r) => {
         if (!r.ok) throw new Error('Failed to load clients')
         return r.json()
       }),
-    ]).then(([pipeline, unpaid]) => {
+    ]).then(([pipeline, all]) => {
       setData(pipeline)
-      setUnpaidClients(unpaid.clients || [])
+      const pending = (all.clients || [])
+        .filter((c: Client) => {
+          const b = bucketPaymentStatus(c.paymentStatus)
+          return b !== null && PENDING_BUCKETS.includes(b)
+        })
+        .slice(0, 5)
+      setUnpaidClients(pending)
       setLoading(false)
     }).catch((err) => {
       setError(err.message || 'Failed to load dashboard data')
@@ -73,12 +80,27 @@ export default function DashboardPage() {
     { label: 'Stalled (7d+)', value: data?.stalled ?? 0, icon: '⏸', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' },
   ]
 
-  const llpBreakdown = (data?.llpStats || [])
-    .filter((s) => s.llpStatus)
+  const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED']
+  const llpBucketCounts: Record<LlpBucket, number> = { COMPLETED: 0, IN_PROCESS: 0, CANCELLED: 0 }
+  for (const s of data?.llpStats || []) {
+    const b = bucketLlpStatus(s.llpStatus)
+    if (b) llpBucketCounts[b] += s._count
+  }
+  const llpBreakdown = LLP_BUCKETS
+    .map((b) => ({ llpStatus: b, _count: llpBucketCounts[b] }))
     .sort((a, b) => b._count - a._count)
 
-  const paymentBreakdown = (data?.paymentStats || [])
-    .filter((s) => s.paymentStatus)
+  const PAYMENT_BUCKETS: PaymentBucket[] = ['PAID', 'PARTIALLY_PAID', 'INCORPORATION_PAID', 'TO_BE_DISCUSSED', 'TO_BE_PAID']
+  const paymentBucketCounts: Record<PaymentBucket, number> = {
+    PAID: 0, PARTIALLY_PAID: 0, INCORPORATION_PAID: 0, TO_BE_DISCUSSED: 0, TO_BE_PAID: 0,
+  }
+  for (const s of data?.paymentStats || []) {
+    const b = bucketPaymentStatus(s.paymentStatus)
+    if (b) paymentBucketCounts[b] += s._count
+  }
+  const paymentBreakdown = PAYMENT_BUCKETS
+    .map((b) => ({ paymentStatus: b, _count: paymentBucketCounts[b] }))
+    .filter((x) => x._count > 0)
     .sort((a, b) => b._count - a._count)
 
   return (
@@ -147,9 +169,9 @@ export default function DashboardPage() {
                         width: `${pct}%`,
                         background: item.llpStatus === 'CANCELLED'
                           ? 'rgba(239, 68, 68, 0.5)'
-                          : item.llpStatus === 'REGISTERED'
+                          : item.llpStatus === 'COMPLETED'
                           ? 'rgba(16, 185, 129, 0.5)'
-                          : 'rgba(34, 211, 238, 0.3)',
+                          : 'rgba(251, 191, 36, 0.5)',
                       }}
                     />
                   </div>

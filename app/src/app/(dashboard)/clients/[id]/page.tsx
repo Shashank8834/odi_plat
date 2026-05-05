@@ -274,6 +274,19 @@ export default function ClientDetailPage() {
             </>
           ) : (
             <>
+              {client.llpStatus !== 'COMPLETED' && (
+                <button
+                  onClick={() => handleStageChange('llpStatus', 'COMPLETED')}
+                  className="btn-secondary"
+                  style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.3)' }}
+                  title="Mark this client as completed"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Mark Completed
+                </button>
+              )}
               <button onClick={() => setEditMode(true)} className="btn-secondary">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />

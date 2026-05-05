@@ -10,6 +10,9 @@ import {
   PAYMENT_STATUS_OPTIONS,
   FURTHER_WORK_OPTIONS,
   STATUS_LABELS,
+  bucketLlpStatus,
+  bucketPaymentStatus,
+  bucketFurtherWork,
 } from '@/lib/constants'
 
 interface Client {
@@ -58,16 +61,20 @@ function ClientsPageInner() {
     setFetchError('')
     const params = new URLSearchParams()
     if (search) params.set('search', search)
-    if (filters.llpStatus) params.set('llpStatus', filters.llpStatus)
-    if (filters.paymentStatus) params.set('paymentStatus', filters.paymentStatus)
-    if (filters.furtherWork) params.set('furtherWork', filters.furtherWork)
-    params.set('limit', '100')
+    params.set('limit', '500')
 
     try {
       const res = await fetch(`/api/clients?${params}`)
       if (!res.ok) { setFetchError('Failed to load clients'); setLoading(false); return }
       const data = await res.json()
-      setClients(data.clients || [])
+      const all: Client[] = data.clients || []
+      const filtered = all.filter((c) => {
+        if (filters.llpStatus && bucketLlpStatus(c.llpStatus) !== filters.llpStatus) return false
+        if (filters.paymentStatus && bucketPaymentStatus(c.paymentStatus) !== filters.paymentStatus) return false
+        if (filters.furtherWork && bucketFurtherWork(c.furtherWork) !== filters.furtherWork) return false
+        return true
+      })
+      setClients(filtered)
       setTotal(data.total || 0)
     } catch {
       setFetchError('Network error — could not load clients')

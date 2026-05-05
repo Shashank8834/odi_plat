@@ -20,16 +20,9 @@ export type StageKey = (typeof STAGES)[number]['key']
 // ─────────────────────────────────────────────
 
 export const LLP_STATUS_OPTIONS = [
-  'REGISTERED',
+  'COMPLETED',
   'IN_PROCESS',
-  'NAME_APPLIED',
-  'NAME_YET_TO_BE_APPLIED',
-  'INCORPORATION_FILED',
-  'SHARE_ALLOTMENT',
-  'CLIENT_HAS_ENTITY',
-  'ON_HOLD',
   'CANCELLED',
-  'TO_START',
 ] as const
 
 export const ODI_STATUS_OPTIONS = [
@@ -92,6 +85,7 @@ export const BANK_OPTIONS = ['HDFC', 'Kotak', 'ICICI', 'Axis', 'DBS', 'HSBC', 'R
 // ─────────────────────────────────────────────
 
 export const STATUS_LABELS: Record<string, string> = {
+  COMPLETED: 'Completed',
   REGISTERED: 'Registered',
   IN_PROCESS: 'In Process',
   NAME_APPLIED: 'Name Applied',
@@ -136,6 +130,7 @@ export const STATUS_LABELS: Record<string, string> = {
 
 export const STATUS_COLORS: Record<string, string> = {
   // Green — Complete/Done
+  COMPLETED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   REGISTERED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   UIN_ALLOTTED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   OPENED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
@@ -175,6 +170,63 @@ export const STATUS_COLORS: Record<string, string> = {
   NOT_SENT: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
   NO_REPLY: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
   NAME_YET_TO_BE_APPLIED: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+}
+
+// ─────────────────────────────────────────────
+// BUCKETING — collapses free-form historical
+// values (e.g. "Project Cancel", "paid") onto
+// the canonical enum values used by filters.
+// ─────────────────────────────────────────────
+
+export type LlpBucket = 'COMPLETED' | 'IN_PROCESS' | 'CANCELLED'
+
+export function bucketLlpStatus(value: string | null | undefined): LlpBucket | null {
+  if (!value) return null
+  const s = value.toLowerCase().trim()
+  if (s.includes('cancel')) return 'CANCELLED'
+  if (
+    s.includes('registered') ||
+    s.includes('complete') ||
+    s.includes('done') ||
+    s.includes('allotted') ||
+    s.includes('opened') ||
+    s.includes('incorporated') ||
+    s.includes('submitted') ||
+    s.includes('filed') ||
+    s.includes('individual-odi') ||
+    s.includes('has llp') ||
+    s.includes('has company') ||
+    s.includes('has opc') ||
+    s.includes('has entity') ||
+    s.includes('has a company') ||
+    s.includes('all ready')
+  ) return 'COMPLETED'
+  return 'IN_PROCESS'
+}
+
+export type PaymentBucket = 'PAID' | 'PARTIALLY_PAID' | 'INCORPORATION_PAID' | 'TO_BE_DISCUSSED' | 'TO_BE_PAID'
+
+export function bucketPaymentStatus(value: string | null | undefined): PaymentBucket | null {
+  if (!value) return null
+  const s = value.toLowerCase().trim()
+  if (s.includes('partial')) return 'PARTIALLY_PAID'
+  if (s.includes('incorp')) return 'INCORPORATION_PAID'
+  if (s.includes('discuss')) return 'TO_BE_DISCUSSED'
+  if (s.includes('to be paid') || s.includes('to pay') || s.includes('pending')) return 'TO_BE_PAID'
+  if (s.includes('paid') || s.includes('received')) return 'PAID'
+  return null
+}
+
+export type FurtherWorkBucket = 'CONVERTED' | 'MAY_COME' | 'NO_REPLY' | 'NONE'
+
+export function bucketFurtherWork(value: string | null | undefined): FurtherWorkBucket | null {
+  if (!value) return null
+  const s = value.toLowerCase().trim()
+  if (s.includes('convert')) return 'CONVERTED'
+  if (s.includes('may come') || s.includes('maycome')) return 'MAY_COME'
+  if (s.includes('no reply') || s.includes('noreply')) return 'NO_REPLY'
+  if (s.includes('none')) return 'NONE'
+  return null
 }
 
 export const STAGE_OPTIONS: Record<string, readonly string[]> = {
