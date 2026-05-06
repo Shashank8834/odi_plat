@@ -88,6 +88,7 @@ export default function DashboardPage() {
   }
   const llpBreakdown = LLP_BUCKETS
     .map((b) => ({ llpStatus: b, _count: llpBucketCounts[b] }))
+    .filter((x) => x._count > 0)
     .sort((a, b) => b._count - a._count)
 
   const PAYMENT_BUCKETS: PaymentBucket[] = ['PAID', 'PARTIALLY_PAID', 'INCORPORATION_PAID', 'TO_BE_DISCUSSED', 'TO_BE_PAID']

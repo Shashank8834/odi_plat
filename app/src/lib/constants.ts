@@ -188,7 +188,7 @@ export const LLP_FILTER_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANC
 export function bucketLlpStatus(value: string | null | undefined): LlpBucket | null {
   if (!value) return null
   const s = value.toLowerCase().trim()
-  if (s.includes('cancel')) return 'CANCELLED'
+  if (s.includes('cancel') || s.includes('hold')) return 'CANCELLED'
   if (
     s.includes('registered') ||
     s.includes('completed') ||
@@ -198,12 +198,9 @@ export function bucketLlpStatus(value: string | null | undefined): LlpBucket | n
     s.includes('submitted') ||
     s.includes('filed')
   ) return 'COMPLETED'
-  if (
-    s.includes('process') ||
-    s.includes('progress') ||
-    s.includes('ongoing')
-  ) return 'IN_PROCESS'
-  return 'UNKNOWN'
+  // Everything else (in process, to start, name applied, client has X,
+  // individual-ODI, etc.) is treated as in-process work.
+  return 'IN_PROCESS'
 }
 
 export type PaymentBucket = 'PAID' | 'PARTIALLY_PAID' | 'INCORPORATION_PAID' | 'TO_BE_DISCUSSED' | 'TO_BE_PAID'
