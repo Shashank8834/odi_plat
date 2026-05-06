@@ -20,7 +20,7 @@ interface PipelineData {
   total: number
   active: number
   cancelled: number
-  stalled: number
+  toStart: number
   llpStats: Array<{ llpStatus: string | null; _count: number }>
   odiStats: Array<{ odiStatus: string | null; _count: number }>
   indianBankStats: Array<{ indianBankStatus: string | null; _count: number }>
@@ -198,7 +198,7 @@ export default function AnalyticsPage() {
         {[
           { label: 'Total Clients', value: pipeline?.total ?? 0, sub: 'All records', color: '#22d3ee', bg: 'rgba(34,211,238,0.08)' },
           { label: 'Active', value: pipeline?.active ?? 0, sub: 'Not cancelled or on hold', color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
-          { label: 'Stalled (7d+)', value: pipeline?.stalled ?? 0, sub: 'Needs attention', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)' },
+          { label: 'To Start', value: pipeline?.toStart ?? 0, sub: 'Yet to begin', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)' },
           {
             label: 'Total Revenue',
             value: `₹${(totalRevenue / 100000).toFixed(1)}L`,

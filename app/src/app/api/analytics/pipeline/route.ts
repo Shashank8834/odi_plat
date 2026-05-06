@@ -26,30 +26,63 @@ export async function GET() {
       prisma.client.groupBy({ by: ['paymentStatus'], where: { isDeleted: false }, _count: true }),
       prisma.client.findMany({
         where: { isDeleted: false },
-        select: { llpStatus: true, updatedAt: true },
+        select: {
+          id: true,
+          serialNo: true,
+          name: true,
+          partner: true,
+          llpStatus: true,
+          odiStatus: true,
+          indianBankStatus: true,
+          foreignBankStatus: true,
+          companyStatus: true,
+          fcgprStatus: true,
+          shareCertStatus: true,
+          form3Status: true,
+        },
       }),
     ])
 
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const isToStart = (v: string | null) => (v ?? '').trim().toLowerCase() === 'to start'
+    const TO_START_FIELDS = [
+      'llpStatus', 'odiStatus', 'indianBankStatus', 'foreignBankStatus',
+      'companyStatus', 'fcgprStatus', 'shareCertStatus', 'form3Status',
+    ] as const
 
     let active = 0
     let cancelled = 0
-    let stalled = 0
+    const toStartClients: Array<{
+      id: string
+      serialNo: number
+      name: string
+      partner: string | null
+      llpStatus: string | null
+      fields: string[]
+    }> = []
     for (const c of allClients) {
       const b = bucketLlpStatus(c.llpStatus)
       if (b === 'CANCELLED') cancelled++
-      else {
-        active++
-        if (c.updatedAt < sevenDaysAgo) stalled++
+      else active++
+      const fields = TO_START_FIELDS.filter((f) => isToStart((c as any)[f]))
+      if (fields.length > 0) {
+        toStartClients.push({
+          id: c.id,
+          serialNo: c.serialNo,
+          name: c.name,
+          partner: c.partner,
+          llpStatus: c.llpStatus,
+          fields: [...fields],
+        })
       }
     }
+    toStartClients.sort((a, b) => a.serialNo - b.serialNo)
 
     return NextResponse.json({
       total,
       active,
       cancelled,
-      stalled,
+      toStart: toStartClients.length,
+      toStartClients,
       llpStats,
       odiStats,
       indianBankStats,

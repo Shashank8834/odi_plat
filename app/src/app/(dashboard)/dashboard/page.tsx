@@ -5,11 +5,21 @@ import Link from 'next/link'
 import StatusPill from '@/components/StatusPill'
 import { STATUS_LABELS, bucketLlpStatus, bucketPaymentStatus, type LlpBucket, type PaymentBucket } from '@/lib/constants'
 
+interface ToStartClient {
+  id: string
+  serialNo: number
+  name: string
+  partner: string | null
+  llpStatus: string | null
+  fields: string[]
+}
+
 interface PipelineData {
   total: number
   active: number
   cancelled: number
-  stalled: number
+  toStart: number
+  toStartClients: ToStartClient[]
   llpStats: Array<{ llpStatus: string | null; _count: number }>
   paymentStats: Array<{ paymentStatus: string | null; _count: number }>
 }
@@ -22,6 +32,17 @@ interface Client {
   llpStatus: string
   paymentStatus: string
   updatedAt: string
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  llpStatus: 'LLP',
+  odiStatus: 'ODI',
+  indianBankStatus: 'Indian Bank',
+  foreignBankStatus: 'Foreign Bank',
+  companyStatus: 'Company',
+  fcgprStatus: 'FCGPR',
+  shareCertStatus: 'Share Cert',
+  form3Status: 'Form 3',
 }
 
 export default function DashboardPage() {
@@ -77,7 +98,7 @@ export default function DashboardPage() {
     { label: 'Total Clients', value: data?.total ?? 0, icon: '👥', color: '#22d3ee', bg: 'rgba(34, 211, 238, 0.08)' },
     { label: 'Active', value: data?.active ?? 0, icon: '✅', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)' },
     { label: 'Cancelled', value: data?.cancelled ?? 0, icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)' },
-    { label: 'Stalled (7d+)', value: data?.stalled ?? 0, icon: '⏸', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' },
+    { label: 'To Start', value: data?.toStart ?? 0, icon: '⏸', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' },
   ]
 
   const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED', 'UNKNOWN']
@@ -202,6 +223,61 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* To Start Clients */}
+        <div className="glass-card p-5 col-span-3">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#94a3b8' }}>
+              To Start ({data?.toStartClients?.length ?? 0})
+            </h2>
+          </div>
+          {(data?.toStartClients?.length ?? 0) === 0 ? (
+            <p className="text-sm text-center py-4" style={{ color: '#64748b' }}>
+              Nothing pending to start
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {data!.toStartClients.map((client) => (
+                <Link
+                  key={client.id}
+                  href={`/clients/${client.id}`}
+                  className="flex items-center justify-between px-4 py-3 rounded-lg transition-all"
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.04)',
+                    border: '1px solid rgba(251, 191, 36, 0.1)',
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{ width: '32px', height: '32px', background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24', flexShrink: 0 }}
+                    >
+                      {client.serialNo}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{client.name}</p>
+                      <p className="text-xs" style={{ color: '#64748b' }}>{client.partner || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {client.fields.map((f) => (
+                      <span
+                        key={f}
+                        className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
+                        style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24' }}
+                      >
+                        {FIELD_LABELS[f] || f}
+                      </span>
+                    ))}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#64748b' }}>
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Pending Payments */}
