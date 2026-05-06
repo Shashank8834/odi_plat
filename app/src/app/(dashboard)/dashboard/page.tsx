@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import StatusPill from '@/components/StatusPill'
-import { STATUS_LABELS, bucketLlpStatus, bucketPaymentStatus, type LlpBucket, type PaymentBucket } from '@/lib/constants'
+import { STATUS_LABELS, STAGE_OPTIONS, bucketLlpStatus, bucketPaymentStatus, type LlpBucket, type PaymentBucket } from '@/lib/constants'
 
 interface ToStartClient {
   id: string
@@ -50,6 +50,35 @@ export default function DashboardPage() {
   const [unpaidClients, setUnpaidClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [savingKey, setSavingKey] = useState<string | null>(null)
+
+  async function changeStatus(clientId: string, field: string, newValue: string) {
+    const key = `${clientId}:${field}`
+    setSavingKey(key)
+    try {
+      const res = await fetch(`/api/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: newValue }),
+      })
+      if (!res.ok) throw new Error('Update failed')
+      setData((prev) => {
+        if (!prev) return prev
+        const updated = prev.toStartClients
+          .map((c) => {
+            if (c.id !== clientId) return c
+            const remaining = c.fields.filter((f) => f !== field)
+            return { ...c, fields: remaining }
+          })
+          .filter((c) => c.fields.length > 0)
+        return { ...prev, toStartClients: updated, toStart: updated.length }
+      })
+    } catch {
+      alert('Failed to update status')
+    } finally {
+      setSavingKey(null)
+    }
+  }
 
   useEffect(() => {
     const PENDING_BUCKETS: PaymentBucket[] = ['TO_BE_PAID', 'PARTIALLY_PAID', 'TO_BE_DISCUSSED']
@@ -239,42 +268,64 @@ export default function DashboardPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {data!.toStartClients.map((client) => (
-                <Link
+                <div
                   key={client.id}
-                  href={`/clients/${client.id}`}
-                  className="flex items-center justify-between px-4 py-3 rounded-lg transition-all"
+                  className="flex items-center justify-between px-4 py-3 rounded-lg"
                   style={{
                     background: 'rgba(251, 191, 36, 0.04)',
                     border: '1px solid rgba(251, 191, 36, 0.1)',
                   }}
                 >
-                  <div className="flex items-center gap-3">
+                  <Link href={`/clients/${client.id}`} className="flex items-center gap-3 min-w-0">
                     <div
                       className="rounded-full flex items-center justify-center text-xs font-bold"
                       style={{ width: '32px', height: '32px', background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24', flexShrink: 0 }}
                     >
                       {client.serialNo}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-white">{client.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{client.name}</p>
                       <p className="text-xs" style={{ color: '#64748b' }}>{client.partner || '—'}</p>
                     </div>
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {client.fields.map((f) => (
-                      <span
-                        key={f}
-                        className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
-                        style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24' }}
-                      >
-                        {FIELD_LABELS[f] || f}
-                      </span>
-                    ))}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#64748b' }}>
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
+                    {client.fields.map((f) => {
+                      const opts = STAGE_OPTIONS[f] || []
+                      const key = `${client.id}:${f}`
+                      const isSaving = savingKey === key
+                      return (
+                        <div key={f} className="flex items-center gap-1.5">
+                          <span
+                            className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
+                            style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24' }}
+                          >
+                            {FIELD_LABELS[f] || f}
+                          </span>
+                          <select
+                            disabled={isSaving}
+                            defaultValue=""
+                            onChange={(e) => {
+                              const v = e.target.value
+                              if (v) changeStatus(client.id, f, v)
+                            }}
+                            className="text-xs px-2 py-1 rounded"
+                            style={{
+                              background: 'rgba(15, 23, 42, 0.6)',
+                              color: '#e2e8f0',
+                              border: '1px solid rgba(251, 191, 36, 0.2)',
+                              cursor: isSaving ? 'wait' : 'pointer',
+                            }}
+                          >
+                            <option value="" disabled>{isSaving ? 'Saving…' : 'Change to…'}</option>
+                            {opts.map((o) => (
+                              <option key={o} value={o}>{STATUS_LABELS[o] || o}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })}
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}
