@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import StatusPill from '@/components/StatusPill'
-import { STATUS_LABELS, STAGE_OPTIONS, OVERALL_STATUS_OPTIONS, bucketLlpStatus, bucketPaymentStatus, resolveOverallStatus, type LlpBucket, type PaymentBucket, type OverallStatus } from '@/lib/constants'
+import { STATUS_LABELS, STAGE_OPTIONS, bucketLlpStatus, bucketPaymentStatus, type LlpBucket, type PaymentBucket, type OverallStatus } from '@/lib/constants'
 
 interface ToStartClient {
   id: string
@@ -18,6 +18,7 @@ interface PipelineData {
   total: number
   active: number
   cancelled: number
+  overallCounts: Record<OverallStatus, number>
   toStart: number
   toStartClients: ToStartClient[]
   llpStats: Array<{ llpStatus: string | null; _count: number }>
@@ -40,7 +41,7 @@ const FIELD_LABELS: Record<string, string> = {
   odiStatus: 'ODI',
   indianBankStatus: 'LLP Bank',
   foreignBankStatus: 'Foreign Bank',
-  companyStatus: 'Company',
+  companyStatus: 'Subsidiary',
   fcgprStatus: 'FCGPR',
   shareCertStatus: 'Share Cert',
   form3Status: 'Form 3',
@@ -49,9 +50,6 @@ const FIELD_LABELS: Record<string, string> = {
 export default function DashboardPage() {
   const [data, setData] = useState<PipelineData | null>(null)
   const [unpaidClients, setUnpaidClients] = useState<Client[]>([])
-  const [overallCounts, setOverallCounts] = useState<Record<OverallStatus, number>>({
-    IN_PROCESS: 0, TO_START: 0, COMPLETED: 0, CANCELLED: 0,
-  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savingKey, setSavingKey] = useState<string | null>(null)
@@ -105,13 +103,6 @@ export default function DashboardPage() {
         })
         .slice(0, 5)
       setUnpaidClients(pending)
-      const counts: Record<OverallStatus, number> = {
-        IN_PROCESS: 0, TO_START: 0, COMPLETED: 0, CANCELLED: 0,
-      }
-      for (const c of allClients) {
-        counts[resolveOverallStatus(c.overallStatus, c.llpStatus)]++
-      }
-      setOverallCounts(counts)
       setLoading(false)
     }).catch((err) => {
       setError(err.message || 'Failed to load dashboard data')
@@ -135,11 +126,12 @@ export default function DashboardPage() {
     )
   }
 
+  const oc = data?.overallCounts ?? { IN_PROCESS: 0, TO_START: 0, COMPLETED: 0, CANCELLED: 0 }
   const stats: Array<{ label: string; value: number; icon: string; color: string; bg: string; filter: OverallStatus }> = [
-    { label: 'In Process', value: overallCounts.IN_PROCESS, icon: '⚙', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)', filter: 'IN_PROCESS' },
-    { label: 'To Start', value: overallCounts.TO_START, icon: '⏸', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.08)', filter: 'TO_START' },
-    { label: 'Completed', value: overallCounts.COMPLETED, icon: '✅', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', filter: 'COMPLETED' },
-    { label: 'Cancelled', value: overallCounts.CANCELLED, icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', filter: 'CANCELLED' },
+    { label: 'In Process', value: oc.IN_PROCESS, icon: '⚙', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)', filter: 'IN_PROCESS' },
+    { label: 'To Start', value: oc.TO_START, icon: '⏸', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.08)', filter: 'TO_START' },
+    { label: 'Completed', value: oc.COMPLETED, icon: '✅', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', filter: 'COMPLETED' },
+    { label: 'Cancelled', value: oc.CANCELLED, icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', filter: 'CANCELLED' },
   ]
 
   const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED', 'UNKNOWN']
@@ -267,16 +259,20 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* To Start Clients */}
+        {/* Clients with individual stages still marked "to start" — distinct from
+            the top-level "To Start" status card, which tracks whole-lead status. */}
         <div className="glass-card p-5 col-span-3">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-1">
             <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#94a3b8' }}>
-              To Start ({data?.toStartClients?.length ?? 0})
+              Pending Stage Actions ({data?.toStartClients?.length ?? 0})
             </h2>
           </div>
+          <p className="text-xs mb-4" style={{ color: '#64748b' }}>
+            Clients with an individual stage marked “to start” — pick a status to advance it.
+          </p>
           {(data?.toStartClients?.length ?? 0) === 0 ? (
             <p className="text-sm text-center py-4" style={{ color: '#64748b' }}>
-              Nothing pending to start
+              No stages pending
             </p>
           ) : (
             <div className="flex flex-col gap-2">

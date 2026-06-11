@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { bucketLlpStatus } from '@/lib/constants'
+import { bucketLlpStatus, resolveOverallStatus, type OverallStatus } from '@/lib/constants'
 
 export async function GET() {
   try {
@@ -31,6 +31,7 @@ export async function GET() {
           serialNo: true,
           name: true,
           partner: true,
+          overallStatus: true,
           llpStatus: true,
           odiStatus: true,
           indianBankStatus: true,
@@ -51,6 +52,11 @@ export async function GET() {
 
     let active = 0
     let cancelled = 0
+    // Headline counts by the boss's 4 top-level statuses, computed over every
+    // client (not a paginated slice) so the dashboard cards stay correct at any size.
+    const overallCounts: Record<OverallStatus, number> = {
+      IN_PROCESS: 0, TO_START: 0, COMPLETED: 0, CANCELLED: 0,
+    }
     const toStartClients: Array<{
       id: string
       serialNo: number
@@ -60,6 +66,7 @@ export async function GET() {
       fields: string[]
     }> = []
     for (const c of allClients) {
+      overallCounts[resolveOverallStatus(c.overallStatus, c.llpStatus)]++
       const b = bucketLlpStatus(c.llpStatus)
       if (b === 'CANCELLED') cancelled++
       else active++
@@ -81,6 +88,7 @@ export async function GET() {
       total,
       active,
       cancelled,
+      overallCounts,
       toStart: toStartClients.length,
       toStartClients,
       llpStats,
