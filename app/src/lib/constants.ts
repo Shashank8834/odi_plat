@@ -3,11 +3,11 @@
 // ─────────────────────────────────────────────
 
 export const STAGES = [
-  { key: 'llpStatus', label: 'LLP Registration', shortLabel: 'LLP', description: '15K+GST' },
-  { key: 'odiStatus', label: 'ODI (UIN)', shortLabel: 'ODI', description: '40K+GST' },
-  { key: 'indianBankStatus', label: 'Indian Bank A/C', shortLabel: 'IN Bank' },
+  { key: 'llpStatus', label: 'LLP Incorporation', shortLabel: 'LLP Incorp.', description: '15K+GST' },
+  { key: 'indianBankStatus', label: 'LLP Bank Account', shortLabel: 'LLP Bank' },
+  { key: 'odiStatus', label: 'ODI Status', shortLabel: 'ODI', description: '40K+GST' },
+  { key: 'companyStatus', label: 'Subsidiary Formation', shortLabel: 'Subsidiary' },
   { key: 'foreignBankStatus', label: 'Foreign Bank A/C', shortLabel: 'FR Bank' },
-  { key: 'companyStatus', label: 'Company Incorporation', shortLabel: 'Company' },
   { key: 'fcgprStatus', label: 'FCGPR Filing', shortLabel: 'FCGPR' },
   { key: 'shareCertStatus', label: 'Share Certificate', shortLabel: 'Share Cert' },
   { key: 'form3Status', label: 'Form 3 Filing', shortLabel: 'Form 3' },
@@ -77,6 +77,11 @@ export const FORM3_STATUS_OPTIONS = [
 export const INVOICE_STATUS_OPTIONS = ['SENT', 'NOT_SENT', 'DRAFT'] as const
 export const PAYMENT_STATUS_OPTIONS = ['PAID', 'PARTIALLY_PAID', 'TO_BE_PAID', 'TO_BE_DISCUSSED', 'INCORPORATION_PAID'] as const
 export const FURTHER_WORK_OPTIONS = ['CONVERTED', 'MAY_COME', 'NO_REPLY', 'NONE'] as const
+
+// Top-level project status set on every client (chosen at creation, edited later).
+// Drives the dashboard buckets and the "Mark Complete" button on the tracker.
+export const OVERALL_STATUS_OPTIONS = ['IN_PROCESS', 'TO_START', 'COMPLETED', 'CANCELLED'] as const
+export type OverallStatus = (typeof OVERALL_STATUS_OPTIONS)[number]
 
 export const BANK_OPTIONS = ['HDFC', 'Kotak', 'ICICI', 'Axis', 'DBS', 'HSBC', 'RBL', 'SC', 'Au Small Finance', 'Yes Bank', 'Deutsche']
 
@@ -226,6 +231,66 @@ export function bucketFurtherWork(value: string | null | undefined): FurtherWork
   if (s.includes('no reply') || s.includes('noreply')) return 'NO_REPLY'
   if (s.includes('none')) return 'NONE'
   return null
+}
+
+// Resolves the top-level project status. If overallStatus is set explicitly
+// (new clients), use it. Otherwise derive from llpStatus so historic rows
+// imported before this field existed still land in a sensible bucket.
+export function resolveOverallStatus(
+  overallStatus: string | null | undefined,
+  llpStatus: string | null | undefined,
+): OverallStatus {
+  if (overallStatus && (OVERALL_STATUS_OPTIONS as readonly string[]).includes(overallStatus)) {
+    return overallStatus as OverallStatus
+  }
+  const llp = bucketLlpStatus(llpStatus)
+  if (llp === 'COMPLETED') return 'COMPLETED'
+  if (llp === 'CANCELLED') return 'CANCELLED'
+  return 'IN_PROCESS'
+}
+
+export type OdiBucket = 'UIN_ALLOTTED' | 'IN_PROCESS' | 'NOT_REQUIRED' | 'TO_START'
+export const ODI_FILTER_BUCKETS: OdiBucket[] = ['UIN_ALLOTTED', 'IN_PROCESS', 'TO_START', 'NOT_REQUIRED']
+export function bucketOdiStatus(value: string | null | undefined): OdiBucket | null {
+  if (!value) return null
+  const s = value.toLowerCase().trim()
+  if (s.includes('uin') || s.includes('allotted')) return 'UIN_ALLOTTED'
+  if (s.includes('not required') || s === 'na') return 'NOT_REQUIRED'
+  if (s === 'to start') return 'TO_START'
+  return 'IN_PROCESS'
+}
+
+export type BankBucket = 'OPENED' | 'IN_PROCESS' | 'TO_START' | 'NOT_REQUIRED'
+export const BANK_FILTER_BUCKETS: BankBucket[] = ['OPENED', 'IN_PROCESS', 'TO_START', 'NOT_REQUIRED']
+export function bucketBankStatus(value: string | null | undefined): BankBucket | null {
+  if (!value) return null
+  const s = value.toLowerCase().trim()
+  if (s.includes('not required') || s === 'na') return 'NOT_REQUIRED'
+  if (s === 'to start') return 'TO_START'
+  if (s.includes('opened') || s.includes('done') || s.includes('selected')) return 'OPENED'
+  return 'IN_PROCESS'
+}
+
+export type CompanyBucket = 'COMPLETE' | 'IN_PROCESS' | 'NO_REPLY' | 'NOT_REQUIRED'
+export const COMPANY_FILTER_BUCKETS: CompanyBucket[] = ['COMPLETE', 'IN_PROCESS', 'NO_REPLY', 'NOT_REQUIRED']
+export function bucketCompanyStatus(value: string | null | undefined): CompanyBucket | null {
+  if (!value) return null
+  const s = value.toLowerCase().trim()
+  if (s.includes('not required') || s === 'na' || s.includes('already exists')) return 'NOT_REQUIRED'
+  if (s.includes('no reply')) return 'NO_REPLY'
+  if (s.includes('complete') || s.includes('incorporated')) return 'COMPLETE'
+  return 'IN_PROCESS'
+}
+
+export function prettifyStatus(value: string | null | undefined): string {
+  if (!value) return '—'
+  if (STATUS_LABELS[value]) return STATUS_LABELS[value]
+  return value
+    .toLowerCase()
+    .split(/[\s\-_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
 }
 
 export const STAGE_OPTIONS: Record<string, readonly string[]> = {

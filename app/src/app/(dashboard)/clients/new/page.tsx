@@ -9,6 +9,7 @@ import {
   INVOICE_STATUS_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
   FURTHER_WORK_OPTIONS,
+  OVERALL_STATUS_OPTIONS,
   BANK_OPTIONS,
   STAGES,
 } from '@/lib/constants'
@@ -20,6 +21,8 @@ export default function NewClientPage() {
   const [form, setForm] = useState<Record<string, string>>({
     name: '',
     partner: '',
+    email: '',
+    overallStatus: 'IN_PROCESS',
     billingEntity: '',
     invoiceNo: '',
     indianBankName: '',
@@ -33,7 +36,7 @@ export default function NewClientPage() {
     setSaving(true)
     setError('')
 
-    // Clean up empty strings → undefined
+    // Clean up empty strings → null
     const payload: Record<string, string | null> = {}
     for (const [k, v] of Object.entries(form)) {
       payload[k] = v.trim() || null
@@ -66,7 +69,9 @@ export default function NewClientPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold"><span className="glow-text">Add New Client</span></h1>
-          <p className="text-sm mt-0.5" style={{ color: '#94a3b8' }}>Create a new ODI client record</p>
+          <p className="text-sm mt-0.5" style={{ color: '#94a3b8' }}>
+            Only Client Name is required — fill in whatever you have, edit the rest later from the tracker.
+          </p>
         </div>
       </div>
 
@@ -85,35 +90,43 @@ export default function NewClientPage() {
                 <input
                   id="new-client-name"
                   className="input-field w-full"
-                  placeholder="e.g. Goldee Enterprises LLP"
+                  placeholder="e.g. ABC Enterprises"
                   value={form.name}
                   onChange={(e) => set('name', e.target.value)}
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: '#94a3b8' }}>Partner</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: '#94a3b8' }}>Contact Person</label>
                 <input
                   className="input-field w-full"
-                  placeholder="Partner name..."
+                  placeholder="e.g. XYZ"
                   value={form.partner}
                   onChange={(e) => set('partner', e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: '#94a3b8' }}>Billing Entity</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: '#94a3b8' }}>Email</label>
                 <input
                   className="input-field w-full"
-                  placeholder="Billing entity name..."
-                  value={form.billingEntity}
-                  onChange={(e) => set('billingEntity', e.target.value)}
+                  type="email"
+                  placeholder="contact@example.com"
+                  value={form.email}
+                  onChange={(e) => set('email', e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: '#94a3b8' }}>Indian Bank</label>
-                <select className="select-field w-full" value={form.indianBankName} onChange={(e) => set('indianBankName', e.target.value)}>
-                  <option value="">— Select bank —</option>
-                  {BANK_OPTIONS.map((b) => <option key={b} value={b}>{b}</option>)}
+                <label className="block text-sm font-medium mb-1.5" style={{ color: '#94a3b8' }}>
+                  Status <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  className="select-field w-full"
+                  value={form.overallStatus}
+                  onChange={(e) => set('overallStatus', e.target.value)}
+                >
+                  {OVERALL_STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -125,6 +138,13 @@ export default function NewClientPage() {
               Pipeline Stages
             </h2>
             <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: '#94a3b8' }}>LLP Bank</label>
+                <select className="select-field w-full" value={form.indianBankName} onChange={(e) => set('indianBankName', e.target.value)}>
+                  <option value="">— Select bank —</option>
+                  {BANK_OPTIONS.map((b) => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
               {STAGES.map((stage) => {
                 const options = STAGE_OPTIONS[stage.key] as readonly string[]
                 return (
@@ -156,6 +176,15 @@ export default function NewClientPage() {
               </h2>
               <div className="flex flex-col gap-3">
                 <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#94a3b8' }}>Billing Entity</label>
+                  <input
+                    className="input-field w-full"
+                    placeholder="Billing entity name..."
+                    value={form.billingEntity}
+                    onChange={(e) => set('billingEntity', e.target.value)}
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#94a3b8' }}>Invoice No</label>
                   <input
                     className="input-field w-full"
@@ -184,6 +213,29 @@ export default function NewClientPage() {
                     <option value="">— Not set —</option>
                     {FURTHER_WORK_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
+                </div>
+
+                {/* Per-service billing split — Incorporation vs ODI */}
+                <div className="pt-3 mt-1" style={{ borderTop: '1px dashed rgba(34,211,238,0.1)' }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748b' }}>
+                    Split by Service
+                  </p>
+                  {([
+                    { label: 'Billing — Incorporation', key: 'billingIncorporation', options: INVOICE_STATUS_OPTIONS },
+                    { label: 'Billing — ODI', key: 'billingOdi', options: INVOICE_STATUS_OPTIONS },
+                    { label: 'Payment — Incorporation', key: 'paymentIncorporation', options: PAYMENT_STATUS_OPTIONS },
+                    { label: 'Payment — ODI', key: 'paymentOdi', options: PAYMENT_STATUS_OPTIONS },
+                  ] as const).map(({ label, key, options }) => (
+                    <div key={key} className="mt-2">
+                      <label className="block text-xs font-medium mb-1" style={{ color: '#94a3b8' }}>{label}</label>
+                      <select className="select-field w-full" value={form[key] || ''} onChange={(e) => set(key, e.target.value)}>
+                        <option value="">— Not set —</option>
+                        {(options as readonly string[]).map((s) => (
+                          <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

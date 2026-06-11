@@ -5,14 +5,21 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import StatusPill from '@/components/StatusPill'
 import {
-  STAGES,
   LLP_FILTER_BUCKETS,
+  ODI_FILTER_BUCKETS,
+  BANK_FILTER_BUCKETS,
+  COMPANY_FILTER_BUCKETS,
   PAYMENT_STATUS_OPTIONS,
   FURTHER_WORK_OPTIONS,
+  OVERALL_STATUS_OPTIONS,
   STATUS_LABELS,
   bucketLlpStatus,
+  bucketOdiStatus,
+  bucketBankStatus,
+  bucketCompanyStatus,
   bucketPaymentStatus,
   bucketFurtherWork,
+  resolveOverallStatus,
 } from '@/lib/constants'
 
 interface Client {
@@ -20,6 +27,8 @@ interface Client {
   serialNo: number
   name: string
   partner: string
+  email: string | null
+  overallStatus: string | null
   llpStatus: string | null
   odiStatus: string | null
   indianBankStatus: string | null
@@ -51,10 +60,25 @@ function ClientsPageInner() {
   const [fetchError, setFetchError] = useState('')
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [filters, setFilters] = useState({
+    overallStatus: searchParams.get('overallStatus') || '',
     llpStatus: searchParams.get('llpStatus') || '',
+    odiStatus: searchParams.get('odiStatus') || '',
+    indianBankStatus: searchParams.get('indianBankStatus') || '',
+    foreignBankStatus: searchParams.get('foreignBankStatus') || '',
+    companyStatus: searchParams.get('companyStatus') || '',
     paymentStatus: searchParams.get('paymentStatus') || '',
     furtherWork: searchParams.get('furtherWork') || '',
   })
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (search) params.set('search', search)
+    for (const [k, v] of Object.entries(filters)) {
+      if (v) params.set(k, v)
+    }
+    const qs = params.toString()
+    router.replace(qs ? `?${qs}` : '?', { scroll: false })
+  }, [search, filters, router])
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
@@ -69,7 +93,12 @@ function ClientsPageInner() {
       const data = await res.json()
       const all: Client[] = data.clients || []
       const filtered = all.filter((c) => {
+        if (filters.overallStatus && resolveOverallStatus(c.overallStatus, c.llpStatus) !== filters.overallStatus) return false
         if (filters.llpStatus && bucketLlpStatus(c.llpStatus) !== filters.llpStatus) return false
+        if (filters.odiStatus && bucketOdiStatus(c.odiStatus) !== filters.odiStatus) return false
+        if (filters.indianBankStatus && bucketBankStatus(c.indianBankStatus) !== filters.indianBankStatus) return false
+        if (filters.foreignBankStatus && bucketBankStatus(c.foreignBankStatus) !== filters.foreignBankStatus) return false
+        if (filters.companyStatus && bucketCompanyStatus(c.companyStatus) !== filters.companyStatus) return false
         if (filters.paymentStatus && bucketPaymentStatus(c.paymentStatus) !== filters.paymentStatus) return false
         if (filters.furtherWork && bucketFurtherWork(c.furtherWork) !== filters.furtherWork) return false
         return true
@@ -87,19 +116,26 @@ function ClientsPageInner() {
     return () => clearTimeout(t)
   }, [fetchClients])
 
+  const hasActiveFilters = !!(search || Object.values(filters).some(Boolean))
+
   const exportCSV = () => {
-    const headers = ['#', 'Client Name', 'Partner', 'LLP Status', 'ODI Status', 'Indian Bank', 'Company', 'Payment', 'Invoice No']
-    const rows = clients.map((c) => [
-      c.serialNo,
-      c.name,
-      c.partner || '',
-      c.llpStatus ? STATUS_LABELS[c.llpStatus] || c.llpStatus : '',
-      c.odiStatus ? STATUS_LABELS[c.odiStatus] || c.odiStatus : '',
-      c.indianBankStatus ? `${STATUS_LABELS[c.indianBankStatus] || c.indianBankStatus}${c.indianBankName ? ` (${c.indianBankName})` : ''}` : '',
-      c.companyStatus ? STATUS_LABELS[c.companyStatus] || c.companyStatus : '',
-      c.paymentStatus ? STATUS_LABELS[c.paymentStatus] || c.paymentStatus : '',
-      c.invoiceNo || '',
-    ])
+    const headers = ['#', 'Client Name', 'Contact Person', 'Email', 'Status', 'LLP Incorporation', 'ODI', 'LLP Bank', 'Subsidiary', 'Payment', 'Invoice No']
+    const rows = clients.map((c) => {
+      const overall = resolveOverallStatus(c.overallStatus, c.llpStatus)
+      return [
+        c.serialNo,
+        c.name,
+        c.partner || '',
+        c.email || '',
+        STATUS_LABELS[overall] || overall,
+        c.llpStatus ? STATUS_LABELS[c.llpStatus] || c.llpStatus : '',
+        c.odiStatus ? STATUS_LABELS[c.odiStatus] || c.odiStatus : '',
+        c.indianBankStatus ? `${STATUS_LABELS[c.indianBankStatus] || c.indianBankStatus}${c.indianBankName ? ` (${c.indianBankName})` : ''}` : '',
+        c.companyStatus ? STATUS_LABELS[c.companyStatus] || c.companyStatus : '',
+        c.paymentStatus ? STATUS_LABELS[c.paymentStatus] || c.paymentStatus : '',
+        c.invoiceNo || '',
+      ]
+    })
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -147,27 +183,87 @@ function ClientsPageInner() {
             id="client-search"
             type="text"
             className="input-field pl-9"
-            placeholder="Search clients or partners..."
+            placeholder="Search clients or contact persons..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <select
+          id="filter-overall"
+          className="select-field w-36"
+          value={filters.overallStatus}
+          onChange={(e) => setFilters((f) => ({ ...f, overallStatus: e.target.value }))}
+        >
+          <option value="">All Status</option>
+          {OVERALL_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+          ))}
+        </select>
+
+        <select
           id="filter-llp"
-          className="select-field w-40"
+          className="select-field w-36"
           value={filters.llpStatus}
           onChange={(e) => setFilters((f) => ({ ...f, llpStatus: e.target.value }))}
         >
-          <option value="">All LLP Status</option>
+          <option value="">All LLP</option>
           {LLP_FILTER_BUCKETS.map((s) => (
             <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
           ))}
         </select>
 
         <select
+          id="filter-odi"
+          className="select-field w-36"
+          value={filters.odiStatus}
+          onChange={(e) => setFilters((f) => ({ ...f, odiStatus: e.target.value }))}
+        >
+          <option value="">All ODI</option>
+          {ODI_FILTER_BUCKETS.map((s) => (
+            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+          ))}
+        </select>
+
+        <select
+          id="filter-indian-bank"
+          className="select-field w-36"
+          value={filters.indianBankStatus}
+          onChange={(e) => setFilters((f) => ({ ...f, indianBankStatus: e.target.value }))}
+        >
+          <option value="">All IN Bank</option>
+          {BANK_FILTER_BUCKETS.map((s) => (
+            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+          ))}
+        </select>
+
+        <select
+          id="filter-foreign-bank"
+          className="select-field w-36"
+          value={filters.foreignBankStatus}
+          onChange={(e) => setFilters((f) => ({ ...f, foreignBankStatus: e.target.value }))}
+        >
+          <option value="">All FR Bank</option>
+          {BANK_FILTER_BUCKETS.map((s) => (
+            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+          ))}
+        </select>
+
+        <select
+          id="filter-company"
+          className="select-field w-36"
+          value={filters.companyStatus}
+          onChange={(e) => setFilters((f) => ({ ...f, companyStatus: e.target.value }))}
+        >
+          <option value="">All Company</option>
+          {COMPANY_FILTER_BUCKETS.map((s) => (
+            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+          ))}
+        </select>
+
+        <select
           id="filter-payment"
-          className="select-field w-40"
+          className="select-field w-36"
           value={filters.paymentStatus}
           onChange={(e) => setFilters((f) => ({ ...f, paymentStatus: e.target.value }))}
         >
@@ -179,7 +275,7 @@ function ClientsPageInner() {
 
         <select
           id="filter-further"
-          className="select-field w-40"
+          className="select-field w-36"
           value={filters.furtherWork}
           onChange={(e) => setFilters((f) => ({ ...f, furtherWork: e.target.value }))}
         >
@@ -189,9 +285,16 @@ function ClientsPageInner() {
           ))}
         </select>
 
-        {(search || filters.llpStatus || filters.paymentStatus || filters.furtherWork) && (
+        {hasActiveFilters && (
           <button
-            onClick={() => { setSearch(''); setFilters({ llpStatus: '', paymentStatus: '', furtherWork: '' }) }}
+            onClick={() => {
+              setSearch('')
+              setFilters({
+                overallStatus: '',
+                llpStatus: '', odiStatus: '', indianBankStatus: '', foreignBankStatus: '',
+                companyStatus: '', paymentStatus: '', furtherWork: '',
+              })
+            }}
             className="btn-ghost text-xs"
           >
             Clear filters
@@ -214,7 +317,7 @@ function ClientsPageInner() {
           <table className="w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(34, 211, 238, 0.08)' }}>
-                {['#', 'Client Name', 'Partner', 'LLP Status', 'ODI', 'Indian Bank', 'Foreign Bank', 'Company', 'FCGPR', 'Payment', ''].map((h) => (
+                {['#', 'Client Name', 'Contact Person', 'Status', 'LLP Incorp.', 'ODI', 'LLP Bank', 'Foreign Bank', 'Subsidiary', 'FCGPR', 'Payment', ''].map((h) => (
                   <th
                     key={h}
                     className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -228,13 +331,13 @@ function ClientsPageInner() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-12">
+                  <td colSpan={12} className="text-center py-12">
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-cyan-400 border-t-transparent mx-auto" />
                   </td>
                 </tr>
               ) : clients.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-12">
+                  <td colSpan={12} className="text-center py-12">
                     <p style={{ color: '#64748b' }}>No clients found</p>
                   </td>
                 </tr>
@@ -255,6 +358,12 @@ function ClientsPageInner() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-xs whitespace-nowrap" style={{ color: '#94a3b8' }}>{client.partner || '—'}</p>
+                      {client.email && (
+                        <p className="text-[10px] whitespace-nowrap" style={{ color: '#64748b' }}>{client.email}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill status={resolveOverallStatus(client.overallStatus, client.llpStatus)} size="sm" />
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={client.llpStatus} size="sm" />

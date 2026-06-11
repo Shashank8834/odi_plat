@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const companyStatus = searchParams.get('companyStatus')
     const paymentStatus = searchParams.get('paymentStatus')
     const furtherWork = searchParams.get('furtherWork')
+    const overallStatus = searchParams.get('overallStatus')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
 
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
     if (companyStatus) where.companyStatus = companyStatus
     if (paymentStatus) where.paymentStatus = paymentStatus
     if (furtherWork) where.furtherWork = furtherWork
+    if (overallStatus) where.overallStatus = overallStatus
 
     const [clients, total] = await Promise.all([
       prisma.client.findMany({
@@ -84,13 +86,25 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, partner, notes, ...rest } = body
+    const { name, notes } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Client name is required' }, { status: 400 })
     }
 
-    const client = await createClientWithSerial({ name, partner, ...rest })
+    const CREATE_FIELDS = [
+      'partner', 'email', 'overallStatus', 'billingEntity',
+      'invoiceNo', 'invoiceStatus', 'paymentStatus', 'furtherWork',
+      'billingIncorporation', 'billingOdi', 'paymentIncorporation', 'paymentOdi',
+      'llpStatus', 'odiStatus', 'indianBankStatus', 'indianBankName',
+      'foreignBankStatus', 'companyStatus', 'fcgprStatus', 'shareCertStatus', 'form3Status',
+    ] as const
+    const data: Record<string, unknown> = { name }
+    for (const k of CREATE_FIELDS) {
+      if (body[k] !== undefined) data[k] = body[k]
+    }
+
+    const client = await createClientWithSerial(data)
 
     await prisma.statusLog.create({
       data: {

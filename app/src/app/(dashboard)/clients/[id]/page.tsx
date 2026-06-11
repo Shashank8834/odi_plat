@@ -12,8 +12,10 @@ import {
   INVOICE_STATUS_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
   FURTHER_WORK_OPTIONS,
+  OVERALL_STATUS_OPTIONS,
   BANK_OPTIONS,
   bucketLlpStatus,
+  resolveOverallStatus,
 } from '@/lib/constants'
 
 interface Note {
@@ -46,6 +48,8 @@ interface Client {
   serialNo: number
   name: string
   partner: string | null
+  email: string | null
+  overallStatus: string | null
   llpStatus: string | null
   odiStatus: string | null
   indianBankStatus: string | null
@@ -59,6 +63,10 @@ interface Client {
   invoiceStatus: string | null
   invoiceNo: string | null
   paymentStatus: string | null
+  billingIncorporation: string | null
+  billingOdi: string | null
+  paymentIncorporation: string | null
+  paymentOdi: string | null
   furtherWork: string | null
   notes: string | null
   createdAt: string
@@ -69,12 +77,12 @@ interface Client {
 }
 
 const FIELD_LABELS: Record<string, string> = {
-  llpStatus: 'LLP Status',
+  llpStatus: 'LLP Incorporation',
   odiStatus: 'ODI Status',
-  indianBankStatus: 'Indian Bank Status',
-  indianBankName: 'Indian Bank Name',
+  indianBankStatus: 'LLP Bank Account',
+  indianBankName: 'LLP Bank Name',
   foreignBankStatus: 'Foreign Bank Status',
-  companyStatus: 'Company Status',
+  companyStatus: 'Subsidiary Formation',
   fcgprStatus: 'FCGPR Status',
   shareCertStatus: 'Share Certificate',
   form3Status: 'Form 3 Filing',
@@ -82,9 +90,15 @@ const FIELD_LABELS: Record<string, string> = {
   invoiceStatus: 'Invoice Status',
   invoiceNo: 'Invoice No',
   paymentStatus: 'Payment Status',
+  billingIncorporation: 'Billing — Incorporation',
+  billingOdi: 'Billing — ODI',
+  paymentIncorporation: 'Payment — Incorporation',
+  paymentOdi: 'Payment — ODI',
   furtherWork: 'Further Work',
   name: 'Client Name',
-  partner: 'Partner',
+  partner: 'Contact Person',
+  email: 'Email',
+  overallStatus: 'Status',
   notes: 'Notes',
   CLIENT_CREATED: 'Client Created',
   MIGRATION: 'Imported from Excel',
@@ -250,16 +264,40 @@ export default function ClientDetailPage() {
             )}
           </div>
           {editMode ? (
-            <input
-              className="input-field mt-1 text-sm"
-              placeholder="Partner name..."
-              value={form.partner || ''}
-              onChange={(e) => setForm((f) => ({ ...f, partner: e.target.value }))}
-            />
+            <div className="mt-2 grid grid-cols-3 gap-2 max-w-2xl">
+              <input
+                className="input-field text-sm"
+                placeholder="Contact person name..."
+                value={form.partner || ''}
+                onChange={(e) => setForm((f) => ({ ...f, partner: e.target.value }))}
+              />
+              <input
+                className="input-field text-sm"
+                type="email"
+                placeholder="Email..."
+                value={form.email || ''}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              <select
+                className="select-field text-sm"
+                value={form.overallStatus || ''}
+                onChange={(e) => setForm((f) => ({ ...f, overallStatus: e.target.value || null }))}
+              >
+                <option value="">— Status —</option>
+                {OVERALL_STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+                ))}
+              </select>
+            </div>
           ) : (
-            <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
-              {client.partner || 'No partner assigned'} · Updated {timeAgo(client.updatedAt)}
-            </p>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <StatusPill status={resolveOverallStatus(client.overallStatus, client.llpStatus)} size="sm" />
+              <span className="text-sm" style={{ color: '#94a3b8' }}>
+                {client.partner || 'No contact person'}
+                {client.email && <> · <a href={`mailto:${client.email}`} className="hover:text-cyan-300" style={{ color: '#94a3b8' }}>{client.email}</a></>}
+                {' '}· Updated {timeAgo(client.updatedAt)}
+              </span>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -275,17 +313,17 @@ export default function ClientDetailPage() {
             </>
           ) : (
             <>
-              {client.llpStatus !== 'COMPLETED' && bucketLlpStatus(client.llpStatus) !== 'UNKNOWN' && (
+              {resolveOverallStatus(client.overallStatus, client.llpStatus) !== 'COMPLETED' && (
                 <button
-                  onClick={() => handleStageChange('llpStatus', 'COMPLETED')}
+                  onClick={() => handleStageChange('overallStatus', 'COMPLETED')}
                   className="btn-secondary"
                   style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.3)' }}
-                  title="Mark this client as completed"
+                  title="Mark this client's project as complete"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  Mark Completed
+                  Mark Complete
                 </button>
               )}
               <button onClick={() => setEditMode(true)} className="btn-secondary">
@@ -514,6 +552,37 @@ export default function ClientDetailPage() {
                     <StatusPill status={client.furtherWork} size="sm" />
                   )}
                 </div>
+
+                {/* Per-service billing breakdown — Incorporation vs ODI */}
+                <div className="pt-3 mt-1" style={{ borderTop: '1px dashed rgba(34,211,238,0.1)' }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#64748b' }}>
+                    Split by Service
+                  </p>
+                  {([
+                    { label: 'Billing — Incorporation', key: 'billingIncorporation', options: INVOICE_STATUS_OPTIONS },
+                    { label: 'Billing — ODI', key: 'billingOdi', options: INVOICE_STATUS_OPTIONS },
+                    { label: 'Payment — Incorporation', key: 'paymentIncorporation', options: PAYMENT_STATUS_OPTIONS },
+                    { label: 'Payment — ODI', key: 'paymentOdi', options: PAYMENT_STATUS_OPTIONS },
+                  ] as const).map(({ label, key, options }) => (
+                    <div key={key} className="flex items-center justify-between gap-3 mt-2">
+                      <span className="text-sm" style={{ color: '#94a3b8' }}>{label}</span>
+                      {editMode ? (
+                        <select
+                          className="select-field text-sm flex-1 max-w-[180px]"
+                          value={(form as any)[key] || ''}
+                          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value || null }))}
+                        >
+                          <option value="">— Not set —</option>
+                          {(options as readonly string[]).map((s) => (
+                            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <StatusPill status={(client as any)[key]} size="sm" />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -524,7 +593,7 @@ export default function ClientDetailPage() {
               </h3>
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: '#94a3b8' }}>Indian Bank</span>
+                  <span className="text-sm" style={{ color: '#94a3b8' }}>LLP Bank</span>
                   {editMode ? (
                     <select
                       className="select-field text-sm max-w-[180px]"
@@ -539,7 +608,7 @@ export default function ClientDetailPage() {
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: '#94a3b8' }}>Indian Bank Status</span>
+                  <span className="text-sm" style={{ color: '#94a3b8' }}>LLP Bank Status</span>
                   <StatusPill status={client.indianBankStatus} size="sm" />
                 </div>
                 <div className="flex items-center justify-between">

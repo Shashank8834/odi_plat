@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import StatusPill from '@/components/StatusPill'
-import { STATUS_LABELS, STAGE_OPTIONS, bucketLlpStatus, bucketPaymentStatus, type LlpBucket, type PaymentBucket } from '@/lib/constants'
+import { STATUS_LABELS, STAGE_OPTIONS, OVERALL_STATUS_OPTIONS, bucketLlpStatus, bucketPaymentStatus, resolveOverallStatus, type LlpBucket, type PaymentBucket, type OverallStatus } from '@/lib/constants'
 
 interface ToStartClient {
   id: string
@@ -29,7 +29,8 @@ interface Client {
   serialNo: number
   name: string
   partner: string
-  llpStatus: string
+  llpStatus: string | null
+  overallStatus: string | null
   paymentStatus: string
   updatedAt: string
 }
@@ -37,7 +38,7 @@ interface Client {
 const FIELD_LABELS: Record<string, string> = {
   llpStatus: 'LLP',
   odiStatus: 'ODI',
-  indianBankStatus: 'Indian Bank',
+  indianBankStatus: 'LLP Bank',
   foreignBankStatus: 'Foreign Bank',
   companyStatus: 'Company',
   fcgprStatus: 'FCGPR',
@@ -48,6 +49,9 @@ const FIELD_LABELS: Record<string, string> = {
 export default function DashboardPage() {
   const [data, setData] = useState<PipelineData | null>(null)
   const [unpaidClients, setUnpaidClients] = useState<Client[]>([])
+  const [overallCounts, setOverallCounts] = useState<Record<OverallStatus, number>>({
+    IN_PROCESS: 0, TO_START: 0, COMPLETED: 0, CANCELLED: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savingKey, setSavingKey] = useState<string | null>(null)
@@ -93,13 +97,21 @@ export default function DashboardPage() {
       }),
     ]).then(([pipeline, all]) => {
       setData(pipeline)
-      const pending = (all.clients || [])
-        .filter((c: Client) => {
+      const allClients: Client[] = all.clients || []
+      const pending = allClients
+        .filter((c) => {
           const b = bucketPaymentStatus(c.paymentStatus)
           return b !== null && PENDING_BUCKETS.includes(b)
         })
         .slice(0, 5)
       setUnpaidClients(pending)
+      const counts: Record<OverallStatus, number> = {
+        IN_PROCESS: 0, TO_START: 0, COMPLETED: 0, CANCELLED: 0,
+      }
+      for (const c of allClients) {
+        counts[resolveOverallStatus(c.overallStatus, c.llpStatus)]++
+      }
+      setOverallCounts(counts)
       setLoading(false)
     }).catch((err) => {
       setError(err.message || 'Failed to load dashboard data')
@@ -123,11 +135,11 @@ export default function DashboardPage() {
     )
   }
 
-  const stats = [
-    { label: 'Total Clients', value: data?.total ?? 0, icon: '👥', color: '#22d3ee', bg: 'rgba(34, 211, 238, 0.08)' },
-    { label: 'Active', value: data?.active ?? 0, icon: '✅', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)' },
-    { label: 'Cancelled', value: data?.cancelled ?? 0, icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)' },
-    { label: 'To Start', value: data?.toStart ?? 0, icon: '⏸', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' },
+  const stats: Array<{ label: string; value: number; icon: string; color: string; bg: string; filter: OverallStatus }> = [
+    { label: 'In Process', value: overallCounts.IN_PROCESS, icon: '⚙', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)', filter: 'IN_PROCESS' },
+    { label: 'To Start', value: overallCounts.TO_START, icon: '⏸', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.08)', filter: 'TO_START' },
+    { label: 'Completed', value: overallCounts.COMPLETED, icon: '✅', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', filter: 'COMPLETED' },
+    { label: 'Cancelled', value: overallCounts.CANCELLED, icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', filter: 'CANCELLED' },
   ]
 
   const LLP_BUCKETS: LlpBucket[] = ['COMPLETED', 'IN_PROCESS', 'CANCELLED', 'UNKNOWN']
@@ -163,7 +175,7 @@ export default function DashboardPage() {
             <span className="glow-text">Dashboard</span>
           </h1>
           <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            Real-time overview of your ODI client pipeline
+            {data?.total ?? 0} clients · click a status card to view the list
           </p>
         </div>
         <Link href="/clients/new" className="btn-primary">
@@ -175,10 +187,11 @@ export default function DashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 mb-6" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {stats.map((stat) => (
-          <div
+          <Link
             key={stat.label}
+            href={`/clients?overallStatus=${stat.filter}`}
             className="stat-card"
-            style={{ borderColor: `${stat.color}20` }}
+            style={{ borderColor: `${stat.color}20`, textDecoration: 'none' }}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium" style={{ color: '#94a3b8' }}>
@@ -194,7 +207,7 @@ export default function DashboardPage() {
             <p className="text-3xl font-bold" style={{ color: stat.color }}>
               {stat.value}
             </p>
-          </div>
+          </Link>
         ))}
       </div>
 

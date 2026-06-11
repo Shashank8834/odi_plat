@@ -1,4 +1,5 @@
 # Only the app/ directory is tracked
+.claude/
 *.pdf
 *.pptx
 *.xlsx

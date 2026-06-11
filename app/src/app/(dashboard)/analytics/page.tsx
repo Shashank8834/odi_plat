@@ -328,7 +328,7 @@ export default function AnalyticsPage() {
         {/* ODI Status */}
         <div className="glass-card p-5">
           <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#64748b' }}>
-            ODI (UIN) Status
+            ODI Status
           </h2>
           <div className="flex flex-col gap-3">
             {odiChartData.map((item) => {
@@ -354,7 +354,7 @@ export default function AnalyticsPage() {
         {/* Company Status */}
         <div className="glass-card p-5">
           <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#64748b' }}>
-            Company Incorporation Status
+            Subsidiary Formation Status
           </h2>
           <div className="flex flex-col gap-3">
             {companyChartData.map((item) => {

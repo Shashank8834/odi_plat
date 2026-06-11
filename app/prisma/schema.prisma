@@ -20,28 +20,34 @@ datasource db {
 // ─────────────────────────────────────────────
 
 model Client {
-  id                 String      @id @default(uuid())
-  serialNo           Int         @unique
-  name               String
-  partner            String?
-  llpStatus          String?
-  odiStatus          String?
-  indianBankStatus   String?
-  indianBankName     String?
-  foreignBankStatus  String?
-  companyStatus      String?
-  fcgprStatus        String?
-  shareCertStatus    String?
-  form3Status        String?
-  billingEntity      String?
-  invoiceStatus      String?
-  invoiceNo          String?
-  paymentStatus      String?
-  furtherWork        String?
-  notes              String?
-  isDeleted          Boolean     @default(false)
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  id                     String      @id @default(uuid())
+  serialNo               Int         @unique
+  name                   String
+  partner                String?
+  email                  String?
+  overallStatus          String?
+  llpStatus              String?
+  odiStatus              String?
+  indianBankStatus       String?
+  indianBankName         String?
+  foreignBankStatus      String?
+  companyStatus          String?
+  fcgprStatus            String?
+  shareCertStatus        String?
+  form3Status            String?
+  billingEntity          String?
+  invoiceStatus          String?
+  invoiceNo              String?
+  paymentStatus          String?
+  billingIncorporation   String?
+  billingOdi             String?
+  paymentIncorporation   String?
+  paymentOdi             String?
+  furtherWork            String?
+  notes                  String?
+  isDeleted              Boolean     @default(false)
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
 
   invoices   Invoice[]
   statusLogs StatusLog[]

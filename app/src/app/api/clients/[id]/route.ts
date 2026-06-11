@@ -4,8 +4,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 const CLIENT_EDITABLE_FIELDS = new Set([
-  'name', 'partner', 'billingEntity', 'invoiceNo', 'invoiceStatus',
-  'paymentStatus', 'furtherWork', 'notes',
+  'name', 'partner', 'email', 'overallStatus', 'billingEntity',
+  'invoiceNo', 'invoiceStatus', 'paymentStatus', 'furtherWork', 'notes',
+  'billingIncorporation', 'billingOdi', 'paymentIncorporation', 'paymentOdi',
   'llpStatus', 'odiStatus', 'indianBankStatus', 'indianBankName',
   'foreignBankStatus', 'companyStatus', 'fcgprStatus', 'shareCertStatus', 'form3Status',
 ])
