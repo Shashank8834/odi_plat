@@ -10,5 +10,7 @@
 prompt_text.txt
 
 # ODI draft templates are served by the app, so they ship with it even when
-# the extension is ignored above.
+# the extension is ignored above. The *_ODI drafts/ folders are the originals
+# those are copied from, and are tracked for the same reason.
 !app/templates/**
+!*_ODI drafts/**
