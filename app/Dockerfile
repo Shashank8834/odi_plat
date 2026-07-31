@@ -31,6 +31,10 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+
+# ODI draft templates are read from disk at request time, so they are not
+# traced into .next/standalone by the build.
+COPY --from=builder /app/templates ./templates
 COPY --from=builder /app/package.json ./package.json
 
 # Full node_modules so Prisma CLI (and its peer deps like `effect`)

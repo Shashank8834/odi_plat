@@ -8,3 +8,7 @@
 *.tmp
 *.~lock*
 prompt_text.txt
+
+# ODI draft templates are served by the app, so they ship with it even when
+# the extension is ignored above.
+!app/templates/**

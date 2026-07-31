@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PipelineStepper from '@/components/PipelineStepper'
 import StatusPill from '@/components/StatusPill'
+import OdiDocumentsCard from '@/components/OdiDocumentsCard'
 import {
   STAGES,
   STAGE_OPTIONS,
@@ -617,6 +618,9 @@ export default function ClientDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* ODI draft generation */}
+            <OdiDocumentsCard clientId={client.id} indianBankName={client.indianBankName} />
 
             {/* Invoices */}
             {client.invoices.length > 0 && (
